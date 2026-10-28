@@ -1,0 +1,52 @@
+name: Simulator validation
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Run unsigned builds and tests on compact and Duo simulators
+        type: boolean
+        required: true
+        default: false
+      upload_app:
+        description: Save only the unsigned simulator app for one day (no logs)
+        type: boolean
+        required: true
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: simulator-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  simulator:
+    if: >-
+      inputs.confirm && github.ref == 'refs/heads/main' &&
+      github.repository == 'ErrantActions/Soccer-Position-iOS' &&
+      github.event.repository.private == false
+    runs-on: xcode-27
+    timeout-minutes: 30
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.1.app/Contents/Developer
+      BUILD_NUMBER: "1"
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Validate release guard tests
+        run: |
+          python3 -m unittest discover -s tools/tests
+          pwsh -NoProfile -File tools/tests/test-upload-guards.ps1
+      - name: Install declared project generator
+        run: brew bundle --file Brewfile
+      - name: Generate project
+        run: bash tools/prepare-ios.sh
+      - name: Build and test both simulator sizes
+        run: bash tools/test-ios.sh
+      - name: Optional unsigned simulator app
+        if: success() && inputs.upload_app
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: CoachAI-unsigned-simulator
+          path: build/DerivedData/Build/Products/Debug-iphonesimulator/CoachAI.app
+          retention-days: 1
+          if-no-files-found: error

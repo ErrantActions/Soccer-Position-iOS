@@ -1,0 +1,50 @@
+name: CoachAI
+options:
+  bundleIdPrefix: com.errantactions
+  deploymentTarget:
+    iOS: "26.0"
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    TARGETED_DEVICE_FAMILY: "1,2"
+    PRODUCT_BUNDLE_IDENTIFIER: com.errantactions.soccerposition
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "${BUILD_NUMBER}"
+    CODE_SIGN_STYLE: Manual
+    GENERATE_INFOPLIST_FILE: NO
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+targets:
+  CoachAI:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+        excludes:
+          - Info.plist
+          - CoachAI.entitlements
+    settings:
+      base:
+        INFOPLIST_FILE: App/Info.plist
+        CODE_SIGN_ENTITLEMENTS: App/CoachAI.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    dependencies: []
+  CoachAITests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [Tests]
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.errantactions.soccerposition.tests
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/CoachAI.app/CoachAI"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+    dependencies:
+      - target: CoachAI
+schemes:
+  CoachAI:
+    build:
+      targets:
+        CoachAI: all
+        CoachAITests: [test]
+    test:
+      targets: [CoachAITests]
