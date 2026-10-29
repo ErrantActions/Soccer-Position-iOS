@@ -17,6 +17,11 @@ on:
         type: boolean
         required: true
         default: false
+      toolbar_smoke_check:
+        description: Run only the focused Duo native-toolbar UI check and save screenshots for one day
+        type: boolean
+        required: true
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -38,25 +43,38 @@ jobs:
         with:
           persist-credentials: false
       - name: Validate release guard tests
+        if: ${{ !inputs.toolbar_smoke_check }}
         run: |
           python3 -m unittest discover -s tools/tests
           pwsh -NoProfile -File tools/tests/test-upload-guards.ps1
       - name: Install declared project generator
         run: brew bundle --file Brewfile
       - name: Test positioning, fold layout and pitch coordinates without a simulator
+        if: ${{ !inputs.toolbar_smoke_check }}
         run: swift test
       - name: Generate project
         run: bash tools/prepare-ios.sh
       - name: Build and test both simulator sizes
-        if: inputs.run_simulator_tests
+        if: inputs.run_simulator_tests && !inputs.toolbar_smoke_check
         run: bash tools/test-ios.sh
       - name: Compile app and native test bundle without launching a simulator
-        if: ${{ !inputs.run_simulator_tests }}
+        if: ${{ !inputs.run_simulator_tests && !inputs.toolbar_smoke_check }}
         run: |
           xcodebuild build-for-testing -project CoachAI.xcodeproj -scheme CoachAI \
             -configuration Debug -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath build/DerivedData \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO DEVELOPMENT_TEAM=
+      - name: Focused native Duo toolbar render check
+        if: inputs.toolbar_smoke_check
+        run: python3 tools/check-toolbar.py
+      - name: Toolbar screenshots only
+        if: always() && inputs.toolbar_smoke_check
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: CoachAI-Duo-toolbar-screenshots
+          path: build/ToolbarScreenshots/**/*.png
+          retention-days: 1
+          if-no-files-found: warn
       - name: Optional unsigned simulator app
         if: success() && inputs.upload_app
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6

@@ -40,11 +40,23 @@ targets:
         BUNDLE_LOADER: "$(TEST_HOST)"
     dependencies:
       - target: CoachAI
+  CoachAIUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [UITests]
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.errantactions.soccerposition.uitests
+        TEST_TARGET_NAME: CoachAI
+    dependencies:
+      - target: CoachAI
 schemes:
   CoachAI:
     build:
       targets:
         CoachAI: all
         CoachAITests: [test]
+        CoachAIUITests: [test]
     test:
-      targets: [CoachAITests]
+      targets: [CoachAITests, CoachAIUITests]
