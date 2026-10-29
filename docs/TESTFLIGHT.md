@@ -1,5 +1,31 @@
 # CoachAI publication and TestFlight runbook
 
+## Custom designer and expanded catalog device checks
+
+The designer creates animations from the current editable scene and edits saved
+animations or customized copies of examples. Four additional web-researched
+transition patterns bring the original animated catalog to ten. Research URLs
+are recorded in each pattern and the README; no third-party diagrams or authored
+drills are bundled. Custom plays need no invented reference or ownership claim.
+Optional authorship metadata preserves unspecified older imports honestly.
+
+After updating:
+
+- Create an animated play; move a selected player and ball with touch and
+  VoiceOver coordinate sliders. Capture phases, set travel times, pass to a
+  receiver and preview. Verify real field proportions and sensible run/pass paths.
+- Add/remove players and rename labels; check every phase retains the roster.
+  Remove/insert phases, undo/redo edits and confirm labels/cues persist.
+- Save, relaunch, edit the saved animation, export/import JSON and check motion.
+  A failed save must leave the editor intact. Cancel must confirm unsaved changes.
+- Customize an example; confirm the built-in pattern is unchanged, references
+  remain, and the saved copy is labeled adapted rather than original.
+- With a compatible iOS 27+ external display, edit and preview while confirming
+  only the field is shown. Editing overlays, controls and notes stay on-device.
+  Check returning from preview restores the draft field rather than a stale clip.
+- Rotate/fold/resize during a drag and exercise large text and native Duo
+  undo/redo/preview tools. Interrupted gestures must not jump to stale coordinates.
+
 ## Animated playbook and presenter release: build 10
 
 Source commit `c2d745a7e8093f2393360ebc3673b7e4d5d4aa9c` passed **129 portable

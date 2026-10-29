@@ -4,6 +4,10 @@ enum AnimationTeam: String, Codable, Sendable {
     case home, away
 }
 
+enum AnimationOrigin: String, Codable, Sendable {
+    case coachAIOriginal, userCreated, adapted
+}
+
 struct AnimationPlayer: Codable, Equatable, Identifiable, Sendable {
     let id: Int
     let label: String
@@ -27,6 +31,7 @@ struct TacticalAnimation: Codable, Equatable, Sendable {
     var category: String
     var frames: [AnimationFrame]
     var references: [PlayReference]
+    var origin: AnimationOrigin?
 
     var duration: Double { frames.last?.time ?? 0 }
 
@@ -36,8 +41,8 @@ struct TacticalAnimation: Codable, Equatable, Sendable {
             throw WorkbenchError.invalid("An animated play needs 2 to 24 frames, starting at zero and ending within 120 seconds.")
         }
         guard !category.isEmpty, category.count <= 40, PlayText.isSafe(category),
-              (1...6).contains(references.count) else {
-            throw WorkbenchError.invalid("An animated play needs a category and 1 to 6 research references.")
+              references.count <= 6 else {
+            throw WorkbenchError.invalid("An animated play needs a category and supports up to 6 optional research references.")
         }
         for reference in references {
             guard !reference.title.isEmpty, reference.title.count <= 120, PlayText.isSafe(reference.title),
@@ -54,7 +59,7 @@ struct TacticalAnimation: Codable, Equatable, Sendable {
         let identities = Set(initial.map(\.id))
         var previousTime = -0.25
         for frame in frames {
-            guard frame.time.isFinite, frame.time - previousTime >= 0.25,
+            guard frame.time.isFinite, frame.time - previousTime >= 0.25 - 1e-9,
                   frame.ball.isInsideField, !frame.cue.isEmpty, frame.cue.count <= 400, PlayText.isSafe(frame.cue),
                   frame.players.count == initial.count, Set(frame.players.map(\.id)) == identities else {
                 throw WorkbenchError.invalid("Animation frames need increasing times, valid coordinates, a cue and consistent unique players.")
@@ -63,7 +68,9 @@ struct TacticalAnimation: Codable, Equatable, Sendable {
                 throw WorkbenchError.invalid("Animation player identities must be unique.")
             }
             for player in frame.players {
-                guard (1...999).contains(player.id), !player.label.isEmpty, player.label.count <= 6,
+                guard (1...999).contains(player.id),
+                      !player.label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, player.label.count <= 6,
+                      !player.label.contains("\n"), !player.label.contains("\r"),
                       PlayText.isSafe(player.label), player.point.isInsideField,
                       let original = initial.first(where: { $0.id == player.id }),
                       original.label == player.label, original.team == player.team else {

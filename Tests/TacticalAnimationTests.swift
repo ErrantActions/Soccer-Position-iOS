@@ -19,14 +19,15 @@ final class TacticalAnimationTests: XCTestCase {
 
     private func clip() throws -> TacticalAnimation { try XCTUnwrap(play().animation) }
 
-    func testSixOriginalPatternsHaveVerifiedReferencesAndValidData() throws {
-        XCTAssertEqual(AnimatedPlayLibrary.plays.count, 6)
-        XCTAssertEqual(Set(AnimatedPlayLibrary.plays.map(\.title)).count, 6)
-        XCTAssertEqual(Set(AnimatedPlayLibrary.plays.map(\.id)).count, 6)
+    func testTenOriginalPatternsHaveVerifiedReferencesAndValidData() throws {
+        XCTAssertEqual(AnimatedPlayLibrary.plays.count, 10)
+        XCTAssertEqual(Set(AnimatedPlayLibrary.plays.map(\.title)).count, 10)
+        XCTAssertEqual(Set(AnimatedPlayLibrary.plays.map(\.id)).count, 10)
         for play in AnimatedPlayLibrary.plays {
             try play.validate()
             let clip = try XCTUnwrap(play.animation)
             XCTAssertFalse(clip.references.isEmpty)
+            XCTAssertEqual(clip.origin, .coachAIOriginal)
             XCTAssertTrue(clip.references.allSatisfy { $0.url.host == "learning.coachesvoice.com" })
             XCTAssertTrue(play.notes.contains("Original CoachAI"))
         }
@@ -183,7 +184,7 @@ final class TacticalAnimationTests: XCTestCase {
         }
         var clip = try clip()
         clip.references = []
-        XCTAssertThrowsError(try clip.validate())
+        XCTAssertNoThrow(try clip.validate())
     }
 
     func testAnimatedDocumentAndMixedLibraryRoundTrip() throws {
@@ -239,7 +240,7 @@ final class TacticalAnimationTests: XCTestCase {
     }
 
     func testDefensiveSlideMovesTheUnitRatherThanOnlyTheBall() throws {
-        let clip = try XCTUnwrap(AnimatedPlayLibrary.plays.last?.animation)
+        let clip = try XCTUnwrap(AnimatedPlayLibrary.plays.first { $0.title == "Move the block together" }?.animation)
         let first = clip.frames[0]
         let last = try XCTUnwrap(clip.frames.last)
         XCTAssertGreaterThan(last.ball.width, first.ball.width)

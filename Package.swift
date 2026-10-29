@@ -12,11 +12,11 @@ let package = Package(
             exclude: [
                 "CoachAIApp.swift", "CoachView.swift", "PitchView.swift", "PositioningIntelligence.swift",
                 "PlaybookStore.swift", "PlaybookView.swift", "SpeechCoach.swift",
-                "FieldPresentation.swift", "AnimationPlayerView.swift",
+                "FieldPresentation.swift", "AnimationPlayerView.swift", "AnimationDesignerView.swift",
                 "Info.plist", "CoachAI.entitlements", "PrivacyInfo.xcprivacy",
             ],
             sources: ["Positioning.swift", "CoachingLayout.swift", "RouteDrawing.swift", "AIPositioning.swift",
-                      "Workbench.swift", "PlayDiagram.swift", "TacticalAnimation.swift", "AnimatedPlayLibrary.swift"]
+                      "Workbench.swift", "PlayDiagram.swift", "TacticalAnimation.swift", "AnimatedPlayLibrary.swift", "AnimationDraft.swift"]
         ),
         .testTarget(name: "CoachCoreTests", dependencies: ["CoachCore"], path: "Tests"),
     ]

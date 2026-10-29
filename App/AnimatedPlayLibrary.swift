@@ -2,7 +2,10 @@ import Foundation
 
 enum AnimatedPlayLibrary {
     // Original illustrative layouts and wording. References explain principles, not these diagrams.
-    static let plays: [SavedPlay] = [overlap, underlap, thirdPlayer, switchPlay, widePress, compactSlide]
+    static let plays: [SavedPlay] = [
+        overlap, underlap, thirdPlayer, switchPlay, widePress, compactSlide,
+        counterAttack, securePossession, counterPress, recoverShape,
+    ]
 
     private static let fullBack = PlayReference(
         title: "Coaches' Voice - Modern full-back",
@@ -19,6 +22,18 @@ enum AnimatedPlayLibrary {
     private static let block = PlayReference(
         title: "Coaches' Voice - Mid-block",
         url: URL(string: "https://learning.coachesvoice.com/cv/mid-block-football-tactics-explained/")!
+    )
+    private static let attackingTransition = PlayReference(
+        title: "Coaches' Voice - Attacking transitions",
+        url: URL(string: "https://learning.coachesvoice.com/cv/attacking-transitions-football-tactics-explained-klopp-liverpool-mourinho/")!
+    )
+    private static let pressingTransition = PlayReference(
+        title: "Coaches' Voice - Counter-pressing",
+        url: URL(string: "https://learning.coachesvoice.com/cv/counter-pressing-gegenpressing-football-tactics-explained-klopp-guardiola-bielsa-hasenhuttl/")!
+    )
+    private static let defensiveTransition = PlayReference(
+        title: "Coaches' Voice - Defensive transitions",
+        url: URL(string: "https://learning.coachesvoice.com/cv/defensive-transitions-football-tactics-explained-chelsea-barcelona/")!
     )
 
     private static func player(_ id: Int, _ depth: Double, _ width: Double) -> AnimationPlayer {
@@ -40,9 +55,69 @@ enum AnimatedPlayLibrary {
             title: title,
             notes: notes + "\nOriginal CoachAI teaching illustration of a common pattern, not a copied drill or match reconstruction. Adapt spacing and timing to your players.",
             board: SavedPlay.examples[0].board,
-            animation: TacticalAnimation(category: category, frames: frames, references: [reference])
+            animation: TacticalAnimation(category: category, frames: frames, references: [reference], origin: .coachAIOriginal)
         )
     }
+
+    private static let counterAttack = play(
+        "Break after the regain", category: "Transitions",
+        notes: "After winning possession, scan for a forward outlet. A central runner and a wide runner create different options; a supporting player protects the ball if the direct pass is unavailable.",
+        reference: attackingTransition, frames: [
+            frame(0, 0.32, 0.50, "Possession has just been won. Look forward before the opposition resets.", [
+                player(6, 0.32, 0.50), player(8, 0.26, 0.62), player(9, 0.50, 0.48), player(11, 0.48, 0.82),
+                player(104, 0.58, 0.35), player(105, 0.60, 0.62), player(108, 0.39, 0.55)]),
+            frame(2, 0.58, 0.48, "Find the forward outlet as the wide teammate runs beyond the pressure.", [
+                player(6, 0.40, 0.49), player(8, 0.34, 0.60), player(9, 0.58, 0.48), player(11, 0.66, 0.82),
+                player(104, 0.64, 0.38), player(105, 0.65, 0.64), player(108, 0.47, 0.54)]),
+            frame(4, 0.79, 0.76, "Use the open lane while the central runner keeps a second option alive.", [
+                player(6, 0.46, 0.50), player(8, 0.42, 0.59), player(9, 0.72, 0.47), player(11, 0.79, 0.76),
+                player(104, 0.70, 0.40), player(105, 0.73, 0.63), player(108, 0.55, 0.56)])
+        ])
+
+    private static let securePossession = play(
+        "Keep it when the break is blocked", category: "Transitions",
+        notes: "A regain does not always create a safe counter-attack. Use a short support pass to escape immediate pressure, then reconnect through an unmarked teammate.",
+        reference: attackingTransition, frames: [
+            frame(0, 0.40, 0.42, "The forward lane is crowded after the regain. Find nearby support.", [
+                player(6, 0.40, 0.42), player(8, 0.29, 0.60), player(2, 0.34, 0.82), player(9, 0.62, 0.48),
+                player(108, 0.44, 0.45), player(110, 0.43, 0.61), player(104, 0.58, 0.45)]),
+            frame(2, 0.29, 0.60, "Set the ball away from the first pressure and give the receiver a clear angle.", [
+                player(6, 0.39, 0.39), player(8, 0.29, 0.60), player(2, 0.39, 0.85), player(9, 0.63, 0.49),
+                player(108, 0.39, 0.49), player(110, 0.39, 0.65), player(104, 0.57, 0.48)]),
+            frame(4, 0.43, 0.86, "Move to the free side, then build again rather than forcing the original break.", [
+                player(6, 0.40, 0.45), player(8, 0.33, 0.62), player(2, 0.43, 0.86), player(9, 0.65, 0.54),
+                player(108, 0.38, 0.55), player(110, 0.40, 0.71), player(104, 0.58, 0.52)])
+        ])
+
+    private static let counterPress = play(
+        "React together after losing it", category: "Defending",
+        notes: "The nearest players respond to a turnover while support blocks simple escape routes. Do not send everyone toward the ball; retain cover and be ready to abandon the press.",
+        reference: pressingTransition, frames: [
+            frame(0, 0.62, 0.42, "The ball has just been lost. The nearest player reacts while support checks the outlets.", [
+                player(7, 0.61, 0.34), player(8, 0.53, 0.50), player(9, 0.71, 0.56), player(6, 0.42, 0.48),
+                player(104, 0.62, 0.42), player(106, 0.55, 0.68), player(103, 0.53, 0.18)]),
+            frame(2, 0.60, 0.44, "Close the ball and screen the easiest inside pass, with cover behind the group.", [
+                player(7, 0.62, 0.39), player(8, 0.57, 0.48), player(9, 0.65, 0.54), player(6, 0.46, 0.48),
+                player(104, 0.60, 0.44), player(106, 0.53, 0.67), player(103, 0.51, 0.19)]),
+            frame(4, 0.58, 0.43, "Keep the opponent under pressure without assuming a guaranteed regain.", [
+                player(7, 0.61, 0.40), player(8, 0.56, 0.45), player(9, 0.62, 0.54), player(6, 0.46, 0.47),
+                player(104, 0.58, 0.43), player(106, 0.51, 0.65), player(103, 0.49, 0.20)])
+        ])
+
+    private static let recoverShape = play(
+        "Recover when the press is beaten", category: "Defending",
+        notes: "When pressure cannot stop the forward pass, prioritize recovery toward your own goal. The nearest player delays while teammates protect central space and rebuild their shape.",
+        reference: defensiveTransition, frames: [
+            frame(0, 0.57, 0.64, "The opponent has escaped the first pressure. Turn and recover rather than chasing alone.", [
+                player(7, 0.65, 0.60), player(8, 0.59, 0.44), player(6, 0.42, 0.52), player(4, 0.30, 0.65), player(5, 0.30, 0.36),
+                player(108, 0.57, 0.64), player(109, 0.39, 0.70), player(107, 0.48, 0.18)]),
+            frame(2, 0.45, 0.67, "The closest defender slows progress while midfielders run goal-side.", [
+                player(7, 0.48, 0.64), player(8, 0.43, 0.43), player(6, 0.36, 0.54), player(4, 0.30, 0.68), player(5, 0.28, 0.40),
+                player(108, 0.45, 0.67), player(109, 0.34, 0.73), player(107, 0.42, 0.22)]),
+            frame(4, 0.38, 0.69, "Reconnect the unit and keep the route to goal protected.", [
+                player(7, 0.37, 0.65), player(8, 0.34, 0.45), player(6, 0.30, 0.55), player(4, 0.23, 0.69), player(5, 0.23, 0.44),
+                player(108, 0.38, 0.69), player(109, 0.30, 0.76), player(107, 0.37, 0.25)])
+        ])
 
     private static let overlap = play(
         "Around the outside", category: "Attacking", notes: "The wide player draws attention inside while a supporting runner goes outside. Keep cover behind the attack.",

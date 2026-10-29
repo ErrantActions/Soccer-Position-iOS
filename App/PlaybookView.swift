@@ -32,6 +32,7 @@ struct PlaybookView: View {
     @State private var importing = false
     @State private var editing: SavedPlay?
     @State private var animating: SavedPlay?
+    @State private var designing: SavedPlay?
     @State private var resetting = false
     @Environment(\.dismiss) private var dismiss
 
@@ -58,6 +59,11 @@ struct PlaybookView: View {
                     }
                 }
                 Section {
+                    Button {
+                        do { designing = try AnimationDraft.newPlay(board: current) }
+                        catch { store.report(error, prefix: "The designer could not be opened.") }
+                    } label: { Label("Create animated play", systemImage: "pencil.and.outline") }
+                    .accessibilityIdentifier("coach.designer.new")
                     Button {
                         editing = SavedPlay(title: "New coaching play", board: current, frames: frames)
                     } label: { Label("Save current setup", systemImage: "bookmark") }
@@ -109,6 +115,7 @@ struct PlaybookView: View {
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
             .sheet(item: $editing) { PlayEditorView(store: store, initial: $0) }
             .sheet(item: $animating) { AnimationPlayerView(play: $0) }
+            .sheet(item: $designing) { AnimationDesignerView(store: store, initial: $0) }
             .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { result in
                 switch result {
                 case .success(let url): Task { await store.importFile(url) }
@@ -164,6 +171,19 @@ struct PlaybookView: View {
             .accessibilityLabel("\(play.animation == nil ? "Load" : "Show animated play") \(play.title)")
             Menu {
                 Button(play.animation == nil ? "Load setup" : "Show animated play", systemImage: "play.rectangle") { open(play) }
+                if play.animation != nil {
+                    Button(example ? "Customize an editable copy" : "Edit animation", systemImage: "pencil.and.outline") {
+                        var editable = play
+                        if example {
+                            editable.id = UUID()
+                            editable.title = String((play.title + " custom").prefix(80))
+                            editable.created = Date()
+                            editable.updated = Date()
+                        }
+                        designing = editable
+                    }
+                    .disabled(!store.writable || !store.loaded)
+                }
                 if !example {
                     Button("Edit name and notes", systemImage: "square.and.pencil") { editing = play }
                     Button(play.favorite ? "Remove favorite" : "Favorite", systemImage: play.favorite ? "star.slash" : "star") {

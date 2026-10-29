@@ -215,12 +215,17 @@ struct AnimationPlayerView: View {
             }.frame(minHeight: 44)
             PresenterControls()
             VStack(alignment: .leading, spacing: 12) {
-                Label("Research and provenance", systemImage: "link").font(.headline)
-                Text("Original CoachAI diagrams and coaching wording based on common tactical principles. References explain the ideas; their text, images and drills are not included. No affiliation or endorsement.")
+                Label("Sources and authorship", systemImage: "link").font(.headline)
+                Text(provenance)
                     .font(.caption).foregroundStyle(CoachPalette.muted)
                 ForEach(Array((play.animation?.references ?? []).enumerated()), id: \.offset) { _, reference in
                     Link(reference.title, destination: reference.url).font(.subheadline).frame(minHeight: 44)
                 }
+                if play.animation?.references.isEmpty == true {
+                    Text("No web references attached to this custom play.").font(.caption).foregroundStyle(CoachPalette.muted)
+                }
+                Text("Provenance is informational, not verified ownership. Source links do not imply affiliation, endorsement or permission to copy.")
+                    .font(.caption2).foregroundStyle(CoachPalette.muted)
                 Text("Links open the web only when tapped. Exported JSON keeps the full animation; SVG is a static opening-frame diagram.")
                     .font(.caption2).foregroundStyle(CoachPalette.muted)
             }.coachCard()
@@ -230,6 +235,19 @@ struct AnimationPlayerView: View {
     private func togglePlayback() {
         speech.stop()
         if playback.playing { playback.pause() } else { playback.play(reducedMotion: reduceMotion) }
+    }
+
+    private var provenance: String {
+        switch play.animation?.origin {
+        case .coachAIOriginal:
+            "Original CoachAI diagrams and coaching wording based on common tactical principles. Reference text, images and authored drills are not included."
+        case .userCreated:
+            "Custom animated play created in CoachAI. Review its accuracy and your rights to any material you add before sharing."
+        case .adapted:
+            "Customized animated play. Retained references describe underlying principles; verify the origin and permissions of any imported material."
+        case nil:
+            "This imported or older animation has no origin metadata. Check authorship and permissions before sharing."
+        }
     }
 
     private func jumpPhase(_ direction: Int) {

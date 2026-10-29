@@ -73,11 +73,18 @@ Apple's store name "CoachAI" was unavailable; the on-device display name remains
   or background audio. Speech stops when the scene changes or the app is inactive.
 - Current teammates and opponents can be edited without AI. Reviewed AI suggestions
   can be adopted as editable positions before saving or sequencing.
-- Six researched, original animated tactical patterns show passes and player runs:
+- Ten researched, original animated tactical patterns show passes and player runs:
   outside overlap, inside underlap, third-player combination, switch of play,
-  wide press-and-cover and a compact defensive slide. Scrub, step, loop or play at
+  wide press-and-cover, a compact defensive slide, counter-attack, securing a
+  regain under pressure, counter-pressing and recovery when the press is beaten.
+  Scrub, step, loop or play at
   0.5x/1x/2x; Reduce Motion switches to discrete phases. Save a copy in the playbook
   to rename, annotate, favorite or share it.
+- The custom animated-play designer creates animations from the current editable
+  scene or customizes a researched pattern without replacing the example. Drag
+  players and the ball, capture/remove phases, adjust travel time, assign ball
+  passes, edit phase cues and player labels, manage the roster and preview motion.
+  Bounded undo/redo and explicit unsaved-change protection preserve editing work.
 - On **iOS 27+**, field-only external presentation uses Apple's scene-accessory API
   with supported AirPlay or wired displays. Ball, players, routes, AI suggestions,
   practice reveals and animated plays appear without the device's control panels
@@ -126,9 +133,39 @@ Links in each play explain the underlying principles and open only when tapped:
 - [Third-man combinations](https://learning.coachesvoice.com/cv/third-man-runs-football-tactics-explained-gasperini-guardiola/)
 - [Switching play and defensive recovery](https://learning.coachesvoice.com/cv/switches-of-play-football-tactics-explained/)
 - [Compact blocks and coordinated pressure](https://learning.coachesvoice.com/cv/mid-block-football-tactics-explained/)
+- [Counter-attacks and securing a regain](https://learning.coachesvoice.com/cv/attacking-transitions-football-tactics-explained-klopp-liverpool-mourinho/)
+- [Counter-pressing after a loss](https://learning.coachesvoice.com/cv/counter-pressing-gegenpressing-football-tactics-explained-klopp-guardiola-bielsa-hasenhuttl/)
+- [Recovering during defensive transitions](https://learning.coachesvoice.com/cv/defensive-transitions-football-tactics-explained-chelsea-barcelona/)
 
 These are research references, not affiliations, endorsements or licenses to copy
 those sites' material. Coaching choices remain illustrative and need coach review.
+
+Choose **Playbook > Create animated play** to start with the current editable
+ball, teammates and opponents. Choose a saved animation's **Edit animation** menu
+item, or a researched example's **Customize an editable copy**, to work from it.
+Set phase 1, select phase 2 and drag the next positions. **Pass ball to this player**
+sets the selected phase's ball destination; motion from the previous phase creates
+the pass. Insert phases to create multi-stage runs or angled passing sequences.
+The outgoing phase cue describes movement toward the next phase.
+
+Player additions/removals/label changes apply to every phase so identities remain
+stable; positions change only in the selected phase. Touch selection, coordinate
+sliders, live external-field updates, phase timing, movement guides and native
+undo/redo/preview tools share the same draft. A resized/repositioned field cancels
+the unfinished gesture rather than applying stale coordinates.
+
+Preview and Save require valid labels, cues, category, positions and metadata.
+Empty text can be temporarily drafted without discarding other field edits.
+Save commits only after local storage succeeds; Cancel confirms before discarding
+changes. Unsaved drafts are in-memory sessions, not crash-recovery backups.
+Names and notes use normal text editing; designer undo/redo covers field edits,
+roster, phases, timing, category and cues (up to 30 edit states).
+
+Custom plays can have no web references; customized researched patterns retain
+their links and are labeled as adapted. Authorship metadata is informational,
+not proof of ownership. Old animations without it are explicitly marked
+unspecified. Custom authoring and reference-free animations require build 11+;
+existing version-1 and version-2 playbooks continue to load in the new app.
 
 Animated JSON files use schema version 2 and preserve player motion, phases,
 notes and references. Existing version-1 scenes and libraries still load.
