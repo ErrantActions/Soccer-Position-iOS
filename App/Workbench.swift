@@ -145,7 +145,7 @@ actor PlaybookRepository {
     func load() throws -> [SavedPlay] {
         do {
             return try PlayCodec.readLibrary(Self.readBounded(url, limit: PlayCodec.maximumLibraryBytes))
-        } catch let error as CocoaError where error.code == .fileReadNoSuchFile {
+        } catch let error as CocoaError where error.code == .fileReadNoSuchFile || error.code == .fileNoSuchFile {
             return []
         }
     }
