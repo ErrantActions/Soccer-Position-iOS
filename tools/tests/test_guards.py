@@ -9,16 +9,13 @@ import unittest
 import tempfile
 import zlib
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 TOOLS = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(TOOLS))
 from profile import permitted_certificate, validate_entitlements, validate_profile
 import release
-
-spec = importlib.util.spec_from_file_location("simulators", TOOLS / "select-simulators.py")
-simulators = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(simulators)
+import ios_tests as simulators
 
 
 class ProfileTests(unittest.TestCase):
@@ -82,10 +79,75 @@ class SimulatorTests(unittest.TestCase):
             {"name": "iPhone Duo", "isAvailable": True, "udid": "duo"},
             {"name": "iPhone 18", "isAvailable": True, "udid": "compact"},
         ]}}
-        self.assertEqual(simulators.select_devices(data), ["compact", "duo"])
+        self.assertEqual([device["udid"] for device in simulators.select_devices(data, "27.1")], ["compact", "duo"])
         data["devices"]["com.apple.CoreSimulator.SimRuntime.iOS-27-1"].pop()
         with self.assertRaises(ValueError):
-            simulators.select_devices(data)
+            simulators.select_devices(data, "27.1")
+
+    def test_requires_both_devices_on_the_selected_sdk_runtime(self):
+        data = {"devices": {
+            "com.apple.CoreSimulator.SimRuntime.iOS-27-0": [
+                {"name": "iPhone 18", "isAvailable": True, "udid": "old-compact"},
+            ],
+            "com.apple.CoreSimulator.SimRuntime.iOS-27-1": [
+                {"name": "iPhone Duo", "isAvailable": True, "udid": "duo"},
+            ],
+        }}
+        with self.assertRaises(ValueError):
+            simulators.select_devices(data, "27.1")
+        data["devices"]["com.apple.CoreSimulator.SimRuntime.iOS-27-1"].append(
+            {"name": "iPhone 18", "isAvailable": True, "udid": "compact"}
+        )
+        self.assertEqual([device["udid"] for device in simulators.select_devices(data, "27.1")], ["compact", "duo"])
+        with self.assertRaises(ValueError):
+            simulators.select_devices(data, "26.0")
+
+    def test_builds_once_and_tests_each_destination_separately(self):
+        devices = [
+            {"name": "iPhone 18", "udid": "compact", "state": "Shutdown"},
+            {"name": "iPhone Duo", "udid": "duo", "state": "Booted"},
+        ]
+        with patch.object(simulators, "run_command") as run:
+            simulators.test_devices(devices)
+        commands = [call.args[0] for call in run.call_args_list]
+        self.assertEqual(sum("build-for-testing" in command for command in commands), 1)
+        test_commands = [command for command in commands if "test-without-building" in command]
+        self.assertEqual(len(test_commands), 2)
+        for command in test_commands:
+            self.assertEqual(command.count("-destination"), 1)
+            self.assertIn("-test-timeouts-enabled", command)
+        self.assertIn(["xcrun", "simctl", "shutdown", "compact"], commands)
+        self.assertNotIn(["xcrun", "simctl", "shutdown", "duo"], commands)
+
+    def test_boot_timeout_stops_testing_and_cleans_up_our_device(self):
+        devices = [{"name": "iPhone 18", "udid": "compact", "state": "Shutdown"}]
+        def execute(command, timeout, label):
+            if "bootstatus" in command:
+                raise RuntimeError("boot timed out")
+        with patch.object(simulators, "run_command", side_effect=execute) as run:
+            with self.assertRaisesRegex(RuntimeError, "boot timed out"):
+                simulators.test_devices(devices)
+        commands = [call.args[0] for call in run.call_args_list]
+        self.assertFalse(any("test-without-building" in command for command in commands))
+        self.assertIn(["xcrun", "simctl", "shutdown", "compact"], commands)
+
+    def test_command_timeout_terminates_only_its_process_group(self):
+        process = Mock(pid=1234)
+        process.wait.side_effect = [subprocess.TimeoutExpired("test", 240), 0]
+        with patch.object(simulators.subprocess, "Popen", return_value=process) as popen:
+            with patch.object(simulators.os, "killpg", create=True) as kill:
+                with self.assertRaisesRegex(RuntimeError, "timed out after 240"):
+                    simulators.run_command(["test-command"], 240, "Simulator tests")
+        popen.assert_called_once_with(["test-command"], start_new_session=True)
+        kill.assert_called_once_with(1234, simulators.signal.SIGTERM)
+        self.assertEqual(process.wait.call_args_list[0].kwargs["timeout"], 240)
+
+    def test_nonzero_command_fails_validation(self):
+        process = Mock()
+        process.wait.return_value = 17
+        with patch.object(simulators.subprocess, "Popen", return_value=process):
+            with self.assertRaisesRegex(RuntimeError, "exit code 17"):
+                simulators.run_command(["test-command"], 240, "Simulator tests")
 
 
 class ReleaseBoundaryTests(unittest.TestCase):

@@ -150,6 +150,11 @@ be coordinated to avoid a race between preflight and upload.
 
 After preflight: generate the actual CoachAI Xcode project, test both simulator
 destinations, archive for a physical device, export, and upload via `altool`.
+Simulator validation builds once, requires both devices on the selected SDK's
+runtime, and runs each destination sequentially. Boot readiness is limited to
+150 seconds and each simulator's test process to 240 seconds; a timeout fails
+the job rather than proceeding to signing. Only simulators started by the helper
+are shut down. Local result bundles are not uploaded as artifacts.
 Temporary files use owner-only permissions; credentials are removed from child
 build/test environments. Certificate identity and generated keychain password
 are masked. Private subprocess output is not printed as public signing logs.
@@ -211,6 +216,11 @@ No public App Store release is submitted by these workflows.
   [native validation run](https://github.com/ErrantActions/Soccer-Position-iOS/actions/runs/40792436312).
   Consult its actual result rather than treating local Windows checks as proof.
   It uses the standard `xcode-27` runner and requests no artifacts or signing secrets.
+  The first run compiled and linked the app and test bundle, but test execution
+  hung and reached the job's 30-minute timeout. Its log includes an Xcode SDK-record
+  `invalidDigitCount` diagnostic; it does not establish passing native tests.
+  The test harness now selects SDK-matched runtimes, checks boot readiness and
+  tests individual destinations with bounded waits instead of one multi-destination run.
 - The TestFlight tab was verified to show **Submit a build to start testing**.
   No signed archive, TestFlight upload, Apple processing or physical iPhone
   installation has been verified. After credentials are ready, run TestFlight
