@@ -17,9 +17,11 @@ approval before any history rewrite. Never print its value.
 
 Repository admins, repository writers, workflow changes, Xcode build scripts,
 Homebrew tools and code executed in release jobs must be trusted. The owner
-explicitly removed GitHub's separate required-reviewer step and authorizes releases
-in chat instead. Review the **exact commit** before dispatch. GitHub cannot enforce
-chat approval: anyone with workflow-dispatch permissions can start a release from
+explicitly removed GitHub's separate required-reviewer step and granted standing
+authorization to deploy completed, verified app changes to TestFlight. Review the
+**exact commit** before dispatch; do not request another per-update approval unless
+the owner pauses deployment. GitHub cannot enforce conversational authorization:
+anyone with workflow-dispatch permissions can start a release from
 main. Changes to workflows or signing helpers can exfiltrate environment secrets.
 Secrets are not exposed to pull requests or forks by these manual-only workflows;
 the release additionally requires this exact repository and the main ref.
@@ -195,9 +197,12 @@ tests do not establish model availability.
    disable **Run simulator tests** for the owner-approved physical-phone path.
    Apple does not require simulator tests for TestFlight. The signed device archive
    still compiles the app, and signing/app/build-number checks are never waived.
-4. Inspect the exact commit and obtain the owner's release approval in chat before
-   dispatch. There is no separate `app-store` reviewer prompt under the current
-   owner-selected policy. The agent must not dispatch unrequested releases.
+4. Inspect the exact commit and use the owner's standing release authorization for
+   completed, verified app changes. Dispatch the existing manual workflow with
+   `confirm_upload=true` and `run_simulator_tests=false`; no separate approval
+   prompt is needed. Respect later requests to pause, and never deploy failed
+   checks. Documentation-only changes do not require a release by themselves.
+   There is no separate `app-store` reviewer prompt under the owner-selected policy.
 5. Successful job upload means Apple accepted the upload request, not that
    processing finished. Check App Store Connect > CoachAI > TestFlight.
 6. Resolve export compliance and processing errors; assign internal testers.
@@ -307,6 +312,7 @@ stale coordinates. Clearing routes explicitly clears history too.
 [Unsigned validation run 40809903744](https://github.com/ErrantActions/Soccer-Position-iOS/actions/runs/40809903744)
 passed all 31 Swift tests, 22 release guard tests, PowerShell upload guards and
 full app/iOS test bundle compilation. No simulator was launched and no artifacts
-were uploaded. This update is not included in TestFlight build 2; another release
-requires the owner's deployment approval. Real touch/Pencil and fold interactions
+were uploaded. This update was not included in TestFlight build 2; the owner has
+since granted standing authorization to deploy completed app changes.
+Real touch/Pencil and fold interactions
 still need device verification.

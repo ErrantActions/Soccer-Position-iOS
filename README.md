@@ -58,7 +58,9 @@ with explicit timeouts. Results remain local under the ignored build directory.
 `swift test` runs the existing positioning tests and fold-layout/coordinate tests
 without booting an iOS simulator. The manual unsigned workflow can also compile
 the app and iOS test bundle without executing simulators: set
-`run_simulator_tests=false`. A new TestFlight release is a separate manual action.
+`run_simulator_tests=false`. The owner has standing authorization for TestFlight
+deployment after completed, verified app changes; agents dispatch the existing
+manual release workflow as part of delivery.
 
 Windows can run the Python/Node guard tests, parse plists and check shell/workflow
 syntax. **None of those checks proves the Swift app compiles.**
@@ -74,8 +76,11 @@ Both are blocked in private staging to avoid unapproved paid compute.
 For a release candidate run **TestFlight only**. Its simulator tests default on,
 but can be explicitly disabled with `run_simulator_tests=false` for owner-approved
 phone testing. Device compilation and signing preflight remain required.
-The owner authorizes releases in chat; there is no second GitHub reviewer step.
-GitHub enforces manual dispatch and main-only deployment, not chat approval.
+The owner's standing release authorization is recorded in
+[project instructions](.github/copilot-instructions.md); there is no second GitHub
+reviewer step or per-update approval prompt. GitHub enforces manual dispatch and
+main-only deployment, not this conversational authorization. Documentation-only
+changes do not require a new build by themselves.
 
 ## Provenance
 
