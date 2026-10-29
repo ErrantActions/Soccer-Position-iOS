@@ -367,3 +367,19 @@ and finish its model download on supported hardware, then test Analyze, automati
 after-edit analysis, cancellation, all player-edit controls, invalid-output
 rejection and labeled fallback on the phone. No cloud API, extra capability,
 sensor permission or collected data was introduced.
+
+### AI Positioning release: build 4
+
+[Release run 40813624829](https://github.com/ErrantActions/Soccer-Position-iOS/actions/runs/40813624829)
+deployed main commit `219713024fc98935abf3f489a4c751843b31de27` as **build 4**.
+All **52 Swift tests** (including 21 AI scene/proposal/freshness tests), 22 release
+guard tests and PowerShell signing guards passed. Native signed compilation,
+archive/export/upload and signing cleanup succeeded in that same job. Simulator
+execution was explicitly waived and no release artifacts were uploaded.
+
+Apple reported build `17bc74b5-5201-4b66-8fde-d973e56351c9` as `VALID`, not expired,
+with internal state `IN_BETA_TESTING`. Access was verified in the existing internal
+tester group; English testing notes were saved and read back. External groups
+were not modified. Update through TestFlight, enable **AI Positioning**, edit the
+scene and tap **Analyze positions**. Actual on-device model availability,
+generation quality and physical interaction were not exercised in CI.
