@@ -379,6 +379,17 @@ class ToolbarCheckTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "requires macOS"):
                 self.module.main()
 
+    def test_build_and_test_do_not_collide_on_result_bundle_or_share_time_budget(self):
+        results = Path("result.xcresult")
+        build = self.module.toolbar_test_command("synthetic-duo", results, "build-for-testing")
+        test = self.module.toolbar_test_command("synthetic-duo", results)
+        self.assertEqual(build[1], "build-for-testing")
+        self.assertNotIn("-resultBundlePath", build)
+        self.assertEqual(test[1], "test-without-building")
+        self.assertIn("-resultBundlePath", test)
+        with self.assertRaises(ValueError):
+            self.module.toolbar_test_command("synthetic-duo", results, "test")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -30,14 +30,19 @@ final class ToolbarSmokeTests: XCTestCase {
                 }
             }
             let draw = app.buttons["coach.toolbar.draw"]
+            let before = XCTAttachment(screenshot: app.screenshot())
+            before.name = orientation == .portrait ? "Native toolbar before draw portrait" : "Native toolbar before draw landscape"
+            before.lifetime = .keepAlways
+            add(before)
             draw.tap()
-            let drawing = expectation(for: NSPredicate(format: "value == %@", "Drawing routes"), evaluatedWith: draw)
+            print("Draw action label after tap: \(draw.label); value: \(String(describing: draw.value))")
+            let drawing = expectation(for: NSPredicate(format: "label CONTAINS[c] %@", "Done drawing"), evaluatedWith: draw)
             guard XCTWaiter.wait(for: [drawing], timeout: 5) == .completed else {
                 XCTFail("The native Draw action did not enable route drawing.")
                 return
             }
             draw.tap()
-            let moving = expectation(for: NSPredicate(format: "value == %@", "Moving players"), evaluatedWith: draw)
+            let moving = expectation(for: NSPredicate(format: "label CONTAINS[c] %@", "Draw route"), evaluatedWith: draw)
             guard XCTWaiter.wait(for: [moving], timeout: 5) == .completed else {
                 XCTFail("The native Draw action did not restore player movement.")
                 return

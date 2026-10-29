@@ -171,6 +171,7 @@ struct CoachView: View {
                 Label(drawing ? "Done drawing" : "Draw route", systemImage: drawing ? "checkmark" : "pencil.tip.crop.circle")
             }
             .tint(drawing ? CoachPalette.lime : CoachPalette.muted)
+            .accessibilityLabel(drawing ? "Done drawing" : "Draw route")
             .accessibilityValue(drawing ? "Drawing routes" : "Moving players")
             .accessibilityIdentifier("coach.toolbar.draw")
 
