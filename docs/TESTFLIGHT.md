@@ -261,3 +261,16 @@ No public App Store release is submitted by these workflows.
   Connect user, and assign build 1. Then accept its invitation and install through
   Apple's TestFlight app. Physical iPhone installation, folding behavior and
   on-device AI still require owner verification.
+
+## UI and Duo redesign validation
+
+The pitch-first redesign, normalized route drawing, role comparison and native
+iOS 27.1 fold-region layouts were validated against commit
+`fd55e99f17a2c46d378377f987141bfc9aa95dc4` in
+[unsigned validation run 40803008819](https://github.com/ErrantActions/Soccer-Position-iOS/actions/runs/40803008819).
+All 15 Swift positioning/layout/coordinate tests and existing release guards passed;
+Xcode compiled the full app and iOS test bundle successfully. Simulator execution,
+artifacts and signing were disabled. This source update is **not** a new TestFlight
+build; build 1 remains the previously uploaded version until the owner authorizes
+another release. Real folding transitions, Pencil input and visual appearance on
+the phone still need device verification.
