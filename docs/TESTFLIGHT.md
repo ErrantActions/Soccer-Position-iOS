@@ -179,7 +179,10 @@ tests do not establish model availability.
 2. For routine unsigned validation: Actions > Simulator validation > main >
    confirm. This compiles/tests; it does not sign or upload.
 3. For a release candidate: Actions > TestFlight > main > confirm upload.
-   **Do not run a duplicate simulator workflow first**; TestFlight runs those tests.
+   **Do not run a duplicate simulator workflow first**. Simulator tests default on;
+   disable **Run simulator tests** for the owner-approved physical-phone path.
+   Apple does not require simulator tests for TestFlight. The signed device archive
+   still compiles the app, and signing/app/build-number checks are never waived.
 4. Inspect the exact commit, then explicitly approve the `app-store` deployment.
 5. Successful job upload means Apple accepted the upload request, not that
    processing finished. Check App Store Connect > CoachAI > TestFlight.
@@ -228,3 +231,7 @@ No public App Store release is submitted by these workflows.
   No signed archive, TestFlight upload, Apple processing or physical iPhone
   installation has been verified. After credentials are ready, run TestFlight
   directly for the release candidate; do not add a duplicate simulator run.
+- The owner subsequently requested physical-phone testing instead of waiting for
+  simulators. The remaining simulator run was cancelled, and TestFlight now has an
+  explicit `run_simulator_tests` input. Use `false` for this upload; a successful
+  upload must not be described as passing simulator tests.

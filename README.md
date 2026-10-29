@@ -50,7 +50,9 @@ environment protection, secure local secret upload and owner actions.
 Workflows are manual only. The unsigned simulator job and the TestFlight job
 use the documented standard `xcode-27` GitHub-hosted runner with Xcode 27.1.
 Both are blocked in private staging to avoid unapproved paid compute.
-For a release candidate run **TestFlight only**: it already includes the same tests.
+For a release candidate run **TestFlight only**. Its simulator tests default on,
+but can be explicitly disabled with `run_simulator_tests=false` for owner-approved
+phone testing. Device compilation, signing preflight and approval remain required.
 
 ## Provenance
 

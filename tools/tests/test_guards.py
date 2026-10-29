@@ -154,6 +154,25 @@ class SimulatorTests(unittest.TestCase):
 
 
 class ReleaseBoundaryTests(unittest.TestCase):
+    def test_release_runs_simulator_tests_by_default(self):
+        with patch.object(release, "run") as run:
+            release.prepare_project({})
+        self.assertEqual([call.args[0] for call in run.call_args_list], [
+            ["bash", "tools/prepare-ios.sh"], ["bash", "tools/test-ios.sh"],
+        ])
+
+    def test_owner_can_waive_simulator_tests_without_skipping_project_generation(self):
+        env = {"RUN_SIMULATOR_TESTS": "false"}
+        with patch.object(release, "run") as run:
+            release.prepare_project(env)
+        run.assert_called_once_with(["bash", "tools/prepare-ios.sh"], "Project generation", env=env)
+
+    def test_invalid_simulator_test_choice_fails_before_building(self):
+        with patch.object(release, "run") as run:
+            with self.assertRaisesRegex(ValueError, "must be true or false"):
+                release.prepare_project({"RUN_SIMULATOR_TESTS": "maybe"})
+        run.assert_not_called()
+
     def test_refuses_local_signing(self):
         with patch.dict("os.environ", {"GITHUB_ACTIONS": ""}):
             with self.assertRaisesRegex(ValueError, "protected macOS"):

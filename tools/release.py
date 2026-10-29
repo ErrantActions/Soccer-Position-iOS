@@ -35,6 +35,21 @@ def run(args: list[str], label: str, *, env: dict[str, str], capture: bool = Fal
     return result.stdout.decode("utf-8", errors="strict") if capture else ""
 
 
+def prepare_project(env: dict[str, str]) -> None:
+    simulator_tests = env.get("RUN_SIMULATOR_TESTS", "true")
+    if simulator_tests not in ("true", "false"):
+        raise ValueError("RUN_SIMULATOR_TESTS must be true or false.")
+    run(["bash", "tools/prepare-ios.sh"], "Project generation", env=env)
+    if simulator_tests == "true":
+        run(["bash", "tools/test-ios.sh"], "Simulator build/tests", env=env)
+    else:
+        print(
+            "Simulator tests waived by workflow input. The signed device archive will compile "
+            "the app; testing on the physical phone is still required.",
+            flush=True,
+        )
+
+
 def cleanup(work: Path) -> None:
     state_path = work / "cleanup.json"
     if state_path.exists():
@@ -122,9 +137,8 @@ def release() -> None:
         if not re.fullmatch(r"[1-9]\d{0,3}", number):
             raise ValueError("App Store Connect preflight returned an invalid build number.")
         env["BUILD_NUMBER"] = number
-        print(f"Preflight passed. Selected build {number}. Running both simulator test destinations.", flush=True)
-        run(["bash", "tools/prepare-ios.sh"], "Project generation", env=env)
-        run(["bash", "tools/test-ios.sh"], "Simulator build/tests", env=env)
+        print(f"Preflight passed. Selected build {number}.", flush=True)
+        prepare_project(env)
         run(["security", "set-key-partition-list", "-S", "apple-tool:,apple:,codesign:", "-s", "-k", password, str(keychain)], "Signing key access configuration", env=env)
         run(["security", "list-keychains", "-d", "user", "-s", str(keychain), *original_keychains], "Signing search-list configuration", env=env)
         profiles = Path.home() / "Library" / "MobileDevice" / "Provisioning Profiles"
