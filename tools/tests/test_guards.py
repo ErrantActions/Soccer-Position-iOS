@@ -10,6 +10,7 @@ import sys
 import unittest
 import tempfile
 import zlib
+import zipfile
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -261,6 +262,10 @@ class ReleaseBoundaryTests(unittest.TestCase):
 
 
 class ConfigurationTests(unittest.TestCase):
+    def test_source_has_a_boolean_exempt_encryption_declaration(self):
+        info = plistlib.loads((TOOLS.parent / "App" / "Info.plist").read_bytes())
+        self.assertIs(info.get("ITSAppUsesNonExemptEncryption"), False)
+
     def test_icon_is_1024_rgb_without_alpha(self):
         icon_spec = importlib.util.spec_from_file_location("assets", TOOLS / "generate-assets.py")
         assets = importlib.util.module_from_spec(icon_spec)
@@ -298,6 +303,56 @@ class ConfigurationTests(unittest.TestCase):
         """
         output = subprocess.check_output(["node", "--input-type=module", "-e", script], cwd=TOOLS.parent, text=True)
         self.assertEqual(json.loads(output), {"result": ["1", "13", "100"], "rejected": 3})
+
+
+class ExportComplianceTests(unittest.TestCase):
+    def test_accepts_only_boolean_false_not_missing_string_or_number(self):
+        release.validate_export_compliance({"ITSAppUsesNonExemptEncryption": False})
+        for value in [True, None, 0, "NO", "false"]:
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(ValueError, "boolean ITSAppUsesNonExemptEncryption=false"):
+                    release.validate_export_compliance({"ITSAppUsesNonExemptEncryption": value})
+        for info in [{}, [], None]:
+            with self.assertRaises(ValueError):
+                release.validate_export_compliance(info)
+
+    def test_binary_archive_plist_preserves_false_as_a_boolean(self):
+        binary = plistlib.dumps({"ITSAppUsesNonExemptEncryption": False}, fmt=plistlib.FMT_BINARY)
+        release.validate_export_compliance(plistlib.loads(binary))
+
+    def test_checks_the_exported_ipas_real_embedded_plist(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            ipa = Path(temporary) / "synthetic.ipa"
+            for format in [plistlib.FMT_BINARY, plistlib.FMT_XML]:
+                with zipfile.ZipFile(ipa, "w") as archive:
+                    archive.writestr(
+                        "Payload/CoachAI.app/Info.plist",
+                        plistlib.dumps({"ITSAppUsesNonExemptEncryption": False}, fmt=format),
+                    )
+                release.validate_ipa_export_compliance(ipa)
+
+    def test_rejects_an_ipa_missing_the_declaration(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            ipa = Path(temporary) / "synthetic.ipa"
+            with zipfile.ZipFile(ipa, "w") as archive:
+                archive.writestr("Payload/CoachAI.app/Info.plist", plistlib.dumps({}))
+            with self.assertRaisesRegex(ValueError, "Refusing to upload"):
+                release.validate_ipa_export_compliance(ipa)
+
+    def test_rejects_an_ipa_with_the_wrong_or_missing_app(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            ipa = Path(temporary) / "synthetic.ipa"
+            with zipfile.ZipFile(ipa, "w") as archive:
+                archive.writestr("Payload/Other.app/Info.plist", plistlib.dumps({"ITSAppUsesNonExemptEncryption": False}))
+            with self.assertRaisesRegex(ValueError, "no readable CoachAI"):
+                release.validate_ipa_export_compliance(ipa)
+
+    def test_rejects_a_corrupt_ipa(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            ipa = Path(temporary) / "synthetic.ipa"
+            ipa.write_bytes(b"synthetic invalid archive")
+            with self.assertRaisesRegex(ValueError, "no readable CoachAI"):
+                release.validate_ipa_export_compliance(ipa)
 
 
 if __name__ == "__main__":

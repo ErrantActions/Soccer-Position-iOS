@@ -82,9 +82,9 @@ struct CoachView: View {
                         VStack(alignment: .leading, spacing: 20) {
                             brand
                             sectionEyebrow(layout.mode == .tabletop ? "TOUCHLINE CONTROLS" : "THE COACH'S VIEW")
-                            coachingControls
+                            coachingControls()
                         }
-                        .padding(22)
+                        .padding(coach.width < 300 ? 14 : 22)
                     }
                     .frame(width: coach.width, height: coach.height)
                     .position(x: coach.midX, y: coach.midY)
@@ -179,22 +179,24 @@ struct CoachView: View {
     }
 
     private func pitchPane(layout: CoachingLayout, duo: Bool) -> some View {
-        let horizontal = layout.mode == .tabletop || layout.pitchPane.height < 500
+        let metrics = CompactPitchMetrics.resolve(size: layout.pitchPane.size, largeText: typeSize.isAccessibilitySize)
+        let horizontal = metrics.horizontal
         return ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: metrics.spacing) {
                 brand
-                if layout.mode != .tabletop {
+                if metrics.showIntroduction {
                     VStack(alignment: .leading, spacing: 7) {
                         sectionEyebrow("YOUR POSITION LAB")
                         Text("Read the game.\nOwn your space.")
-                            .font(.system(.largeTitle, design: .rounded, weight: .bold))
-                            .tracking(-1.3)
+                            .font(.system(.title2, design: .rounded, weight: .bold))
+                            .tracking(-0.7)
                             .fixedSize(horizontal: false, vertical: true)
                         Text("One ball. A better view of your next move.")
                             .font(.subheadline)
                             .foregroundStyle(CoachPalette.muted)
                     }
                 }
+                rolePicker
                 VStack(spacing: 14) {
                     HStack(alignment: .center) {
                         Label(horizontal ? "Defend left" : "Defend bottom", systemImage: horizontal ? "arrow.left" : "arrow.down")
@@ -209,8 +211,8 @@ struct CoachView: View {
                         }
                     }
                     field(horizontal: horizontal)
-                    .aspectRatio(horizontal ? 1.5 : 0.76, contentMode: .fit)
-                    .frame(maxWidth: horizontal ? 780 : 530)
+                        .frame(width: metrics.pitchSize.width, height: metrics.pitchSize.height)
+                        .frame(maxWidth: .infinity)
                     HStack(spacing: 16) {
                         legend(position.rawValue, color: acceptedPlan == nil ? CoachPalette.lime : CoachPalette.ai)
                         if comparing { legend(comparison.rawValue, color: CoachPalette.blue) }
@@ -227,15 +229,22 @@ struct CoachView: View {
                 if duo || layout.mode == .book || layout.mode == .tabletop {
                     duoBadge(layout.mode)
                 }
-                if layout.coachPane == nil { coachingControls }
+                coachingControls(includeRole: false)
             }
-            .padding(layout.mode == .tabletop ? 16 : 22)
-            .frame(maxWidth: layout.coachPane == nil ? 650 : .infinity)
+            .padding(metrics.padding)
+            .frame(maxWidth: 650)
             .frame(maxWidth: .infinity)
         }
     }
 
     private var brand: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 10) { brandIdentity; Spacer(minLength: 8); phaseBadge }
+            VStack(alignment: .leading, spacing: 8) { brandIdentity; phaseBadge }
+        }
+    }
+
+    private var brandIdentity: some View {
         HStack(spacing: 10) {
             Image(systemName: "figure.soccer")
                 .font(.title3.weight(.bold))
@@ -245,15 +254,19 @@ struct CoachView: View {
             Text("CoachAI")
                 .font(.system(.title3, design: .rounded, weight: .heavy))
                 .tracking(-0.5)
-            Spacer()
-            Text("DEFENDING")
-                .font(.system(.caption2, design: .monospaced, weight: .semibold))
-                .tracking(1)
-                .foregroundStyle(CoachPalette.lime)
-                .padding(.horizontal, 12).padding(.vertical, 8)
-                .background(CoachPalette.lime.opacity(0.08), in: Capsule())
-                .overlay(Capsule().strokeBorder(CoachPalette.lime.opacity(0.2)))
+                .lineLimit(1).minimumScaleFactor(0.65)
         }
+    }
+
+    private var phaseBadge: some View {
+        Text("DEFENDING")
+            .font(.system(.caption2, design: .monospaced, weight: .semibold))
+            .tracking(1)
+            .foregroundStyle(CoachPalette.lime)
+            .lineLimit(1).minimumScaleFactor(0.65)
+            .padding(.horizontal, 12).padding(.vertical, 8)
+            .background(CoachPalette.lime.opacity(0.08), in: Capsule())
+            .overlay(Capsule().strokeBorder(CoachPalette.lime.opacity(0.2)))
     }
 
     private var pitchToolbar: some View {
@@ -342,38 +355,47 @@ struct CoachView: View {
         .buttonStyle(.plain)
     }
 
-    private var coachingControls: some View {
+    private var rolePicker: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                ForEach(Position.allCases) { role in
+                    Button {
+                        position = role
+                    } label: {
+                        Text(role.rawValue)
+                            .font(.system(.subheadline, design: .rounded, weight: .bold))
+                            .padding(.horizontal, 12)
+                            .frame(minWidth: 48, minHeight: 48)
+                            .foregroundStyle(position == role ? CoachPalette.ink : CoachPalette.muted)
+                            .background(position == role ? CoachPalette.lime : .white.opacity(0.04), in: RoundedRectangle(cornerRadius: 12))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(role.label)
+                        .accessibilityAddTraits(position == role ? .isSelected : [])
+                }
+            }
+        }
+        .accessibilityLabel("Your position")
+    }
+
+    private var roleCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                sectionEyebrow("01  CHOOSE YOUR ROLE")
+                Spacer(minLength: 0)
+                Image(systemName: "person.crop.circle").foregroundStyle(CoachPalette.muted)
+            }
+            rolePicker
+            Text(position.label).font(.subheadline.weight(.semibold))
+        }
+        .coachCard()
+    }
+
+    private func coachingControls(includeRole: Bool = true) -> some View {
         VStack(alignment: .leading, spacing: 18) {
+            if includeRole { roleCard }
             routePanel
             aiPositioningPanel
-            VStack(alignment: .leading, spacing: 14) {
-                HStack {
-                    sectionEyebrow("01  CHOOSE YOUR ROLE")
-                    Spacer(minLength: 0)
-                    Image(systemName: "person.crop.circle").foregroundStyle(CoachPalette.muted)
-                }
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 6) {
-                        ForEach(Position.allCases) { role in
-                            Button {
-                                position = role
-                            } label: {
-                                Text(role.rawValue)
-                                    .font(.system(.subheadline, design: .rounded, weight: .bold))
-                                    .padding(.horizontal, 12)
-                                    .frame(minWidth: 48, minHeight: 48)
-                                    .foregroundStyle(position == role ? CoachPalette.ink : CoachPalette.muted)
-                                    .background(position == role ? CoachPalette.lime : .white.opacity(0.04), in: RoundedRectangle(cornerRadius: 12))
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel(role.label)
-                            .accessibilityAddTraits(position == role ? .isSelected : [])
-                        }
-                    }
-                }
-                Text(position.label).font(.subheadline.weight(.semibold))
-            }
-            .coachCard()
             VStack(alignment: .leading, spacing: 14) {
                 sectionEyebrow("02  SET THE SCENE")
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -425,11 +447,14 @@ struct CoachView: View {
                     .font(.caption2).foregroundStyle(CoachPalette.muted)
             }
             Rectangle().fill(.white.opacity(0.08)).frame(height: 1)
-            HStack(alignment: .top, spacing: 18) {
+            let metricsLayout = typeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+                : AnyLayout(HStackLayout(alignment: .top, spacing: 18))
+            metricsLayout {
                 metric("BALL SIDE", value: ball.width < 0.4 ? "Left channel" : ball.width > 0.6 ? "Right channel" : "Central")
-                Spacer(minLength: 0)
                 metric("FIELD ZONE", value: ball.depth < 0.33 ? "Defensive third" : ball.depth > 0.67 ? "Attacking third" : "Middle third")
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .coachCard(accent: true)
     }
@@ -442,13 +467,16 @@ struct CoachView: View {
             }
             .accessibilityHint("Show two recommended player positions using the same ball.")
             if comparing {
-                HStack {
-                    legend(position.rawValue, color: CoachPalette.lime)
-                    Image(systemName: "arrow.left.arrow.right").font(.caption).foregroundStyle(CoachPalette.muted)
-                    Picker("Compare with", selection: $comparison) {
-                        ForEach(Position.allCases.filter { $0 != position }) { Text($0.label).tag($0) }
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 10) {
+                        legend(position.rawValue, color: CoachPalette.lime)
+                        Image(systemName: "arrow.left.arrow.right").font(.caption).foregroundStyle(CoachPalette.muted)
+                        comparisonPicker
                     }
-                    .tint(CoachPalette.blue)
+                    VStack(alignment: .leading, spacing: 10) {
+                        legend(position.rawValue, color: CoachPalette.lime)
+                        comparisonPicker
+                    }
                 }
                 Text(guidance(for: comparison).cue)
                     .font(.subheadline)
@@ -462,6 +490,15 @@ struct CoachView: View {
             }
         }
         .coachCard()
+    }
+
+    private var comparisonPicker: some View {
+        Picker("Compare with", selection: $comparison) {
+            ForEach(Position.allCases.filter { $0 != position }) { Text($0.label).tag($0) }
+        }
+        .pickerStyle(.menu)
+        .labelsHidden()
+        .tint(CoachPalette.blue)
     }
 
     private var aiCard: some View {
@@ -532,6 +569,7 @@ struct CoachView: View {
                     ForEach(OpponentRole.allCases) { Text("Move opponent \($0.rawValue)").tag(SceneEditTarget.opponent($0)) }
                 }
                 .pickerStyle(.menu)
+                .labelsHidden()
                 selectedPlayerControls
                 Toggle("Analyze after edits", isOn: $autoAnalyze).font(.subheadline)
                 Button {
@@ -677,6 +715,7 @@ struct CoachView: View {
             Text(title).font(.system(.caption2, design: .monospaced)).foregroundStyle(CoachPalette.muted)
             Text(value).font(.caption.weight(.semibold))
         }
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     private func legend(_ title: String, color: Color) -> some View {
@@ -748,13 +787,18 @@ struct CoachView: View {
 
 private struct CoachCard: ViewModifier {
     var accent = false
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     func body(content: Content) -> some View {
         content
-            .padding(18)
+            .padding(typeSize.isAccessibilitySize ? 14 : 18)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(accent ? CoachPalette.lime.opacity(0.055) : CoachPalette.surface, in: RoundedRectangle(cornerRadius: 22))
-            .overlay(RoundedRectangle(cornerRadius: 22).strokeBorder(accent ? CoachPalette.lime.opacity(0.2) : .white.opacity(0.065)))
+            .overlay(RoundedRectangle(cornerRadius: 22).strokeBorder(
+                accent ? CoachPalette.lime.opacity(contrast == .increased ? 0.55 : 0.2) :
+                    .white.opacity(contrast == .increased ? 0.25 : 0.065)
+            ))
     }
 }
 
@@ -768,4 +812,20 @@ private extension View {
 
 #Preview("Coaching desk", traits: .fixedLayout(width: 1000, height: 760)) {
     CoachView()
+}
+
+#Preview("Small phone", traits: .fixedLayout(width: 320, height: 568)) {
+    CoachView()
+}
+
+#Preview("Phone landscape", traits: .fixedLayout(width: 667, height: 320)) {
+    CoachView()
+}
+
+#Preview("Narrow iPad window", traits: .fixedLayout(width: 375, height: 1000)) {
+    CoachView()
+}
+
+#Preview("Accessibility text", traits: .fixedLayout(width: 390, height: 800)) {
+    CoachView().environment(\.dynamicTypeSize, .accessibility3)
 }

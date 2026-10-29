@@ -383,3 +383,32 @@ tester group; English testing notes were saved and read back. External groups
 were not modified. Update through TestFlight, enable **AI Positioning**, edit the
 scene and tap **Analyze positions**. Actual on-device model availability,
 generation quality and physical interaction were not exercised in CI.
+
+## Device layouts and encryption declaration
+
+The existing experience now adapts to ordinary phone landscape safe-area widths,
+medium iPad windows, narrow multitasking windows and accessibility text. Compact
+portrait layouts place role selection above the pitch and fit an aspect-correct
+pitch to a height budget; the large introduction is reserved for roomy windows.
+Wide layouts keep a fixed pitch and independently scrolling settings, with
+fold-specific Duo behavior preserved.
+
+`App/Info.plist` already declares **boolean**
+`ITSAppUsesNonExemptEncryption=false`. The current app uses Apple system frameworks
+and introduces no custom or third-party encryption implementation. Apple's build
+metadata for builds 1-4 was read back as `usesNonExemptEncryption=false`; those
+values alone cannot distinguish automatic handling from prior manual answers.
+
+The release now verifies the declaration in both the **actual archived app** and
+the **exported IPA** before upload, not just in source. Missing keys, true, numeric
+or string substitutes, a missing app plist and corrupt IPA containers fail the
+release explicitly. Public logs report only the verified boolean, not app/signing
+contents. After upload, verify Apple's stored encryption value and beta state.
+
+Apple documents that including the correct declaration avoids the repeated export
+questionnaire. No separate "France" plist boolean or fabricated export approval
+code is added. Reassess the declaration and any country-specific documentation if
+the app's cryptography changes; do not retain this exemption blindly.
+
+- [Apple: ITSAppUsesNonExemptEncryption](https://developer.apple.com/documentation/bundleresources/information-property-list/itsappusesnonexemptencryption)
+- [Apple: export compliance overview](https://developer.apple.com/help/app-store-connect/manage-app-information/overview-of-export-compliance/)

@@ -10,6 +10,7 @@ import signal
 import subprocess
 import sys
 import tempfile
+import zipfile
 from pathlib import Path
 
 from profile import permitted_certificate, validate_entitlements, validate_profile
@@ -80,6 +81,23 @@ def prepare_project(env: dict[str, str]) -> None:
             "the app; testing on the physical phone is still required.",
             flush=True,
         )
+
+
+def validate_export_compliance(info: object) -> None:
+    if not isinstance(info, dict) or info.get("ITSAppUsesNonExemptEncryption") is not False:
+        raise ValueError(
+            "The built app must declare boolean ITSAppUsesNonExemptEncryption=false. "
+            "Refusing to upload without the app's exempt-encryption declaration."
+        )
+
+
+def validate_ipa_export_compliance(ipa: Path) -> None:
+    try:
+        with zipfile.ZipFile(ipa) as archive:
+            data = archive.read("Payload/CoachAI.app/Info.plist")
+    except (KeyError, zipfile.BadZipFile) as error:
+        raise ValueError("The exported IPA has no readable CoachAI app Info.plist.") from error
+    validate_export_compliance(plistlib.loads(data))
 
 
 def cleanup(work: Path) -> None:
@@ -192,12 +210,18 @@ def release() -> None:
              "CODE_SIGN_IDENTITY=Apple Distribution",
              f'PROVISIONING_PROFILE_SPECIFIER={profile["Name"]}',
              "OTHER_CODE_SIGN_FLAGS=--keychain " + str(keychain), "archive"], "Signed archive", env=env)
+        validate_export_compliance(plistlib.loads(
+            (archive / "Products" / "Applications" / "CoachAI.app" / "Info.plist").read_bytes()
+        ))
+        print("Archived app verified: ITSAppUsesNonExemptEncryption=false.", flush=True)
         exported = work / "export"
         run(["xcodebuild", "-exportArchive", "-archivePath", str(archive),
              "-exportPath", str(exported), "-exportOptionsPlist", str(export_options)], "IPA export", env=env)
         ipas = list(exported.glob("*.ipa"))
         if len(ipas) != 1:
             raise ValueError("Expected exactly one exported IPA.")
+        validate_ipa_export_compliance(ipas[0])
+        print("Exported IPA verified: ITSAppUsesNonExemptEncryption=false.", flush=True)
         upload_env = {**env, "API_PRIVATE_KEYS_DIR": str(key_dir)}
         run(["xcrun", "altool", "--upload-app", "-f", str(ipas[0]), "-t", "ios",
              "--apiKey", key_id, "--apiIssuer", os.environ["APP_STORE_CONNECT_ISSUER_ID"]],

@@ -33,8 +33,12 @@ struct CoachingLayout: Equatable {
             }
         }
         let duoDesk = duoDisplay && size.width >= 520
-        if (size.width >= 760 || duoDesk), (!largeText || duoDesk) {
-            let sidebar = min(390, max(240, size.width * 0.38))
+        let landscapePhone = size.width >= 560 && size.width > size.height
+        let regularDesk = size.width >= 680 || landscapePhone
+        if (regularDesk || duoDesk), (!largeText || duoDesk) {
+            let sidebar = duoDesk
+                ? min(390, max(240, size.width * 0.38))
+                : min(400, max(260, size.width * 0.36))
             return CoachingLayout(
                 mode: .desk,
                 pitchPane: CGRect(x: 0, y: 0, width: size.width - sidebar, height: size.height),
@@ -42,6 +46,29 @@ struct CoachingLayout: Equatable {
             )
         }
         return CoachingLayout(mode: .compact, pitchPane: bounds, coachPane: nil)
+    }
+}
+
+struct CompactPitchMetrics: Equatable {
+    let padding: CGFloat
+    let spacing: CGFloat
+    let pitchSize: CGSize
+    let horizontal: Bool
+    let showIntroduction: Bool
+
+    static func resolve(size: CGSize, largeText: Bool) -> CompactPitchMetrics {
+        let padding: CGFloat = size.width < 360 ? 14 : 20
+        let width = max(0, min(600, size.width - padding * 2))
+        let horizontal = size.width > size.height
+        let ratio: CGFloat = horizontal ? 1.5 : 0.76
+        let heightBudget = max(0, min(largeText ? 360 : 560, size.height * (largeText ? 0.42 : 0.60)))
+        let pitchWidth = min(width, heightBudget * ratio)
+        return CompactPitchMetrics(
+            padding: padding, spacing: size.height < 700 ? 14 : 20,
+            pitchSize: CGSize(width: pitchWidth, height: pitchWidth / ratio),
+            horizontal: horizontal,
+            showIntroduction: size.width >= 600 && size.height >= 900 && !largeText
+        )
     }
 }
 

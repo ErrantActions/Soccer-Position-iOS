@@ -23,9 +23,16 @@ Apple's store name "CoachAI" was unavailable; the on-device display name remains
   without scrolling or an aspect-ratio size cap; all controls live in the
   independently scrolling right panel. A horizontal tabletop fold uses a full
   top pitch pane and bottom controls so nothing crosses the hinge.
+- Regular phone landscape and medium iPad windows also get a fixed pitch with
+  right-hand settings, based on the safe-area window size rather than a device
+  model. Small portrait screens place role controls near the pitch, omit the
+  oversized introduction, and fit an aspect-correct pitch to the available height.
+  Narrow iPad windows reflow to one column without resetting the session.
 - Accessibility-sized text uses a single column on ordinary flat displays; a Duo
   coaching desk keeps the fixed pitch and scrollable settings separate. Active
-  fold boundaries remain respected. Animations honor Reduce Motion.
+  fold boundaries remain respected. Control rows and metrics reflow for larger
+  text; Increase Contrast strengthens card borders and pitch lines. Animations
+  honor Reduce Motion.
 - Optional **AI Positioning** uses Apple Foundation Models guided generation to
   propose actual coordinates and reasons for all five defensive roles. Edit the
   ball, current teammates, three opponents and formation; tap Analyze or analyze
@@ -92,6 +99,11 @@ The owner's standing release authorization is recorded in
 reviewer step or per-update approval prompt. GitHub enforces manual dispatch and
 main-only deployment, not this conversational authorization. Documentation-only
 changes do not require a new build by themselves.
+
+Release uploads require the existing boolean
+`ITSAppUsesNonExemptEncryption=false` declaration to survive in both the archived
+app and exported IPA. The build fails before upload if it is missing or changed;
+review this declaration if the app's cryptography changes.
 
 ## Provenance
 

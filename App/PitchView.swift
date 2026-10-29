@@ -20,6 +20,7 @@ struct PitchView: View {
     let onMoveTarget: (SceneEditTarget, FieldPoint) -> Void
     let onEditingChanged: (Bool) -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorSchemeContrast) private var contrast
     @GestureState private var isDragging = false
     @State private var gestureContext: GestureContext?
 
@@ -202,7 +203,7 @@ struct PitchView: View {
             let spot = projection.location(FieldPoint(depth: depth == 0 ? 0.115 : 0.885, width: 0.5))
             context.fill(Path(ellipseIn: CGRect(x: spot.x - 2, y: spot.y - 2, width: 4, height: 4)), with: .color(.white.opacity(0.5)))
         }
-        context.stroke(lines, with: .color(.white.opacity(0.37)), lineWidth: 1.2)
+        context.stroke(lines, with: .color(.white.opacity(contrast == .increased ? 0.65 : 0.37)), lineWidth: 1.2)
         context.fill(Path(ellipseIn: CGRect(x: center.x - 2, y: center.y - 2, width: 4, height: 4)), with: .color(.white.opacity(0.65)))
         var goal = Path()
         goal.move(to: projection.location(FieldPoint(depth: 0, width: 0.4)))
