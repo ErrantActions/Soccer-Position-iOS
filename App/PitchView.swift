@@ -23,6 +23,7 @@ struct PitchView: View {
     var displayRoutes: [[FieldPoint]]? = nil
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.tvMarkerSize) private var tvMarkerSize
     @GestureState private var isDragging = false
     @State private var gestureContext: GestureContext?
 
@@ -43,7 +44,8 @@ struct PitchView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            let projection = PitchProjection(size: geometry.size, horizontal: horizontal)
+            let projection = PitchProjection(size: geometry.size, horizontal: horizontal, presentation: tvMarkerSize)
+            let metrics = PitchMarkerMetrics(projection: projection)
             let frame = geometry.frame(in: .global)
             let context = GestureContext(
                 frame: frame, horizontal: horizontal, drawing: drawing,
@@ -61,7 +63,7 @@ struct PitchView: View {
                         line.addLine(to: projection.location(recommendation.point))
                         line.addLine(to: projection.location(FieldPoint(depth: 0, width: 0.5)))
                         context.stroke(line, with: .color(CoachPalette.lime.opacity(0.65)),
-                                       style: StrokeStyle(lineWidth: 1.4, dash: [4, 6]))
+                                       style: StrokeStyle(lineWidth: 1.4 * metrics.scale, dash: [4 * metrics.scale, 6 * metrics.scale]))
                     }
                     if practice == nil {
                         for route in displayRoutes ?? (routeDrawing.routes + (routeDrawing.preview.isEmpty ? [] : [routeDrawing.preview])) {
@@ -73,7 +75,8 @@ struct PitchView: View {
                         let radius = CGFloat(round.radiusMeters) * projection.metersToPoints
                         let zone = Path(ellipseIn: CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2))
                         context.fill(zone, with: .color(CoachPalette.lime.opacity(0.12)))
-                        context.stroke(zone, with: .color(CoachPalette.lime), style: StrokeStyle(lineWidth: 2, dash: [4, 4]))
+                        context.stroke(zone, with: .color(CoachPalette.lime),
+                                       style: StrokeStyle(lineWidth: 2 * metrics.scale, dash: [4 * metrics.scale, 4 * metrics.scale]))
                     }
                 }
                 if drawing, let target = routeDrawing.snapTarget {
@@ -87,6 +90,7 @@ struct PitchView: View {
                     Ellipse()
                         .fill(RadialGradient(colors: [CoachPalette.lime.opacity(0.3), .clear], center: .center, startRadius: 0, endRadius: 75))
                         .frame(width: 155, height: 155)
+                        .scaleEffect(metrics.scale)
                         .position(projection.location(recommendation.point))
                         .allowsHitTesting(false)
                 }
@@ -97,6 +101,7 @@ struct PitchView: View {
                         .frame(width: 24, height: 24)
                         .background(CoachPalette.ink.opacity(0.8), in: Circle())
                         .overlay(Circle().strokeBorder(.white.opacity(editTarget == .teammate(player.role) ? 1 : 0.4), lineWidth: 1.5))
+                        .scaleEffect(metrics.scale)
                         .position(projection.location(player.point))
                         .allowsHitTesting(false)
                 }
@@ -107,13 +112,14 @@ struct PitchView: View {
                         .frame(width: 26, height: 26)
                         .background(Color(red: 0.65, green: 0.18, blue: 0.23), in: RoundedRectangle(cornerRadius: 8))
                         .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.white.opacity(editTarget == .opponent(opponent.role) ? 1 : 0.25), lineWidth: 1.5))
+                        .scaleEffect(metrics.scale)
                         .position(projection.location(opponent.point))
                         .allowsHitTesting(false)
                 }
                 ForEach(suggestions) { advice in
                     marker(advice.role, color: advice.role == role ? (aiSuggested ? CoachPalette.ai : CoachPalette.lime) :
                             advice.role == comparison ? CoachPalette.blue : CoachPalette.muted, secondary: advice.role != role)
-                        .scaleEffect(advice.role == role ? 1 : 0.65)
+                        .scaleEffect(metrics.scale * (advice.role == role ? 1 : 0.65))
                         .position(projection.location(advice.point))
                         .animation(reduceMotion ? nil : .smooth(duration: 0.15), value: advice.point)
                 }
@@ -122,6 +128,7 @@ struct PitchView: View {
                         .overlay(alignment: .top) {
                             Text("YOU").font(.system(size: 9, weight: .heavy)).foregroundStyle(.white).offset(y: -8)
                         }
+                        .scaleEffect(metrics.scale)
                         .position(projection.location(guess))
                         .allowsHitTesting(false)
                 }
@@ -132,6 +139,7 @@ struct PitchView: View {
                     .background(.black.opacity(0.25), in: Circle())
                     .overlay(Circle().strokeBorder(.white.opacity(0.25), lineWidth: 1))
                     .shadow(color: .black.opacity(0.4), radius: 5, y: 3)
+                    .scaleEffect(metrics.scale)
                     .position(projection.location(ball))
             }
             .overlay(RoundedRectangle(cornerRadius: 22).strokeBorder(.white.opacity(0.09), lineWidth: 1))
@@ -262,6 +270,7 @@ struct PitchView: View {
 
     private func drawRoute(_ points: [FieldPoint], context: inout GraphicsContext, projection: PitchProjection) {
         guard let first = points.first, let last = points.last, points.count > 1 else { return }
+        let metrics = PitchMarkerMetrics(projection: projection)
         var path = Path()
         path.move(to: projection.location(first))
         if points.count == 2 {
@@ -275,14 +284,15 @@ struct PitchView: View {
             }
             path.addLine(to: projection.location(last))
         }
-        context.stroke(path, with: .color(.white.opacity(0.9)), style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+        context.stroke(path, with: .color(.white.opacity(0.9)),
+                       style: StrokeStyle(lineWidth: metrics.routeWidth, lineCap: .round, lineJoin: .round))
         let end = projection.location(last)
         guard let direction = RouteDrawing.arrowDirection(for: points, projection: projection) else { return }
         let angle = atan2(direction.dy, direction.dx)
         var arrow = Path()
-        arrow.move(to: CGPoint(x: end.x - 10 * cos(angle - 0.5), y: end.y - 10 * sin(angle - 0.5)))
+        arrow.move(to: CGPoint(x: end.x - metrics.arrowLength * cos(angle - 0.5), y: end.y - metrics.arrowLength * sin(angle - 0.5)))
         arrow.addLine(to: end)
-        arrow.addLine(to: CGPoint(x: end.x - 10 * cos(angle + 0.5), y: end.y - 10 * sin(angle + 0.5)))
-        context.stroke(arrow, with: .color(.white), style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+        arrow.addLine(to: CGPoint(x: end.x - metrics.arrowLength * cos(angle + 0.5), y: end.y - metrics.arrowLength * sin(angle + 0.5)))
+        context.stroke(arrow, with: .color(.white), style: StrokeStyle(lineWidth: metrics.routeWidth, lineCap: .round, lineJoin: .round))
     }
 }

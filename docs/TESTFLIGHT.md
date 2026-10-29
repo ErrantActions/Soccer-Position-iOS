@@ -1,5 +1,27 @@
 # CoachAI publication and TestFlight runbook
 
+## External TV marker readability checks
+
+External fields use proportional audience sizing with at least a 2x base scale
+at Standard, rather than the previous fixed phone-size marker cap. The shared
+metrics cover the main board's roles/teammates/opponents, practice guesses,
+animation/youth players and keepers, ball, guide strokes and route arrows.
+Additional presentation-only pitch inset keeps edge marker bodies visible.
+No world coordinates or real pitch dimensions change.
+
+On the device, **Field-only presentation > TV marker size** selects Compact,
+Standard, Large or Extra large for this session. The setting is injected only
+into the external scene, not phone/tablet/editor/thumbnail views or SVG files.
+No new persistent settings, permission, privacy API or signing capability is added.
+
+Test a TV at normal viewing distance: switch all sizes while displaying the
+live board, AI/compare mode, practice reveal, youth layouts and animated plays.
+Check jersey labels, keeper rings, ball, routes and markers on touchlines/corners.
+Verify phone sizes stay unchanged, controls/notes remain off the TV, blanking
+still works, and real field proportions survive route/resolution changes.
+Geometric metric tests and native compilation do not establish physical TV
+readability; the receiver check remains necessary.
+
 ## Researched youth-team support release: build 12
 
 Source commit `8d9ade1927abace614d634465537a2fec48c58e3` passed **161 portable

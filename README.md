@@ -94,6 +94,13 @@ Apple's store name "CoachAI" was unavailable; the on-device display name remains
   practice reveals and animated plays appear without the device's control panels
   or saved notes. A device-side switch blanks the external field. No display is
   needed to use the app.
+- TV markers now scale with the external playing area rather than retaining
+  phone-sized dots. Players, jersey/role labels, goalkeeper rings, the ball and
+  route arrows are larger; extra canvas clearance protects edge markers. Use
+  **Field-only presentation > TV marker size** on the device to choose Compact,
+  Standard, Large or Extra large. This is a session-only audience preference;
+  phone/tablet markers, saved coordinates, field proportions and SVG exports
+  remain unchanged.
 
 The default instant guide is a deliberately simplified native teaching model, not feature parity
 with the web application's full multi-player tactical engine or challenge mode.

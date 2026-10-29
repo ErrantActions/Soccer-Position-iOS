@@ -133,6 +133,7 @@ struct PitchProjection {
     let bounds: CGRect
     let horizontal: Bool
     let format: TeamFormat?
+    let presentation: TVMarkerSize?
     var isUsable: Bool { bounds.width > 0 && bounds.height > 0 }
     var interactionBounds: CGRect { isUsable ? bounds.insetBy(dx: -2, dy: -2) : bounds }
     var fieldLength: CGFloat { format?.fieldLength ?? PitchDimensions.length }
@@ -141,9 +142,9 @@ struct PitchProjection {
     var fullSizeMarkings: Bool { format == nil || format == .eleven }
     var metersToPoints: CGFloat { horizontal ? bounds.width / fieldLength : bounds.width / fieldWidth }
 
-    init(size: CGSize, horizontal: Bool, format: TeamFormat? = nil) {
+    init(size: CGSize, horizontal: Bool, format: TeamFormat? = nil, presentation: TVMarkerSize? = nil) {
         let size = CGSize(width: max(0, size.width), height: max(0, size.height))
-        let inset = PitchDimensions.inset(for: size)
+        let inset = presentation?.canvasInset(for: size) ?? PitchDimensions.inset(for: size)
         let field = PitchDimensions.fittedPlayingSize(
             in: CGSize(width: size.width - inset * 2, height: size.height - inset * 2),
             horizontal: horizontal, format: format
@@ -154,6 +155,7 @@ struct PitchProjection {
         )
         self.horizontal = horizontal
         self.format = format
+        self.presentation = presentation
     }
 
     func location(_ point: FieldPoint) -> CGPoint {

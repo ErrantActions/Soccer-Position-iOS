@@ -3,6 +3,17 @@ import UIKit
 import Observation
 import OSLog
 
+private struct TVMarkerSizeKey: EnvironmentKey {
+    static let defaultValue: TVMarkerSize? = nil
+}
+
+extension EnvironmentValues {
+    var tvMarkerSize: TVMarkerSize? {
+        get { self[TVMarkerSizeKey.self] }
+        set { self[TVMarkerSizeKey.self] = newValue }
+    }
+}
+
 struct BoardPresentation: Equatable {
     let board: BoardSnapshot
     let advice: [PlayerAdvice]
@@ -20,6 +31,7 @@ final class FieldPresentation {
     private(set) var animationFormat: TeamFormat?
     private(set) var animationOwner: UUID?
     var blanked = false
+    var markerSize: TVMarkerSize = .standard
     private var sessions: Set<String> = []
     var connected: Bool { !sessions.isEmpty }
 
@@ -53,6 +65,12 @@ struct PresenterControls: View {
                     .font(.caption).foregroundStyle(CoachPalette.muted)
                 Toggle("Blank the external field", isOn: $display.blanked)
                     .font(.subheadline)
+                Picker("TV marker size", selection: $display.markerSize) {
+                    ForEach(TVMarkerSize.allCases) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.menu)
+                Text("Players, labels, ball and routes scale for the external field. This session's TV size does not change the phone or saved plays.")
+                    .font(.caption2).foregroundStyle(CoachPalette.muted)
                 Text("Ordinary FaceTime/Zoom screen sharing may still show your entire device. Verify what the audience sees before sharing.")
                     .font(.caption2).foregroundStyle(CoachPalette.muted)
             } else {
@@ -128,6 +146,7 @@ private struct ExternalFieldView: View {
         .ignoresSafeArea()
         .preferredColorScheme(.dark)
         .allowsHitTesting(false)
+        .environment(\.tvMarkerSize, display.markerSize)
     }
 
     private func board(_ content: BoardPresentation, horizontal: Bool) -> some View {

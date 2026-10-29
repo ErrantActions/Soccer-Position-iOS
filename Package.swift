@@ -18,7 +18,7 @@ let package = Package(
             ],
             sources: ["Positioning.swift", "CoachingLayout.swift", "RouteDrawing.swift", "AIPositioning.swift",
                       "Workbench.swift", "PlayDiagram.swift", "TacticalAnimation.swift", "AnimatedPlayLibrary.swift", "AnimationDraft.swift",
-                      "YouthSoccer.swift"]
+                      "YouthSoccer.swift", "PitchMarkerMetrics.swift"]
         ),
         .testTarget(name: "CoachCoreTests", dependencies: ["CoachCore"], path: "Tests"),
     ]

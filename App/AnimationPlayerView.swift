@@ -281,6 +281,7 @@ struct AnimationPitchView: View {
     var audience = false
     var format: TeamFormat? = nil
     @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.tvMarkerSize) private var tvMarkerSize
 
     var body: some View {
         GeometryReader { _ in
@@ -292,24 +293,26 @@ struct AnimationPitchView: View {
                     context.translateBy(x: (size.width - canvas.width * scale) / 2, y: (size.height - canvas.height * scale) / 2)
                     context.scaleBy(x: scale, y: scale)
                 }
-                let projection = PitchProjection(size: canvas, horizontal: canvas.width > canvas.height, format: format)
+                let projection = PitchProjection(size: canvas, horizontal: canvas.width > canvas.height, format: format, presentation: tvMarkerSize)
+                let metrics = PitchMarkerMetrics(projection: projection)
                 PitchView.drawField(context: &context, projection: projection, increasedContrast: contrast == .increased)
                 for player in frame.players {
                     let point = projection.location(player.point)
-                    let radius: CGFloat = min(20, max(11, projection.metersToPoints * 2.4))
+                    let radius = metrics.animationRadius
                     let bounds = CGRect(x: point.x - radius, y: point.y - radius, width: radius * 2, height: radius * 2)
                     let color = player.team == .home ? CoachPalette.lime : Color(red: 0.77, green: 0.24, blue: 0.30)
                     let marker = player.team == .home ? Path(ellipseIn: bounds) : Path(roundedRect: bounds, cornerRadius: radius * 0.35)
                     context.fill(marker, with: .color(color))
-                    context.stroke(marker, with: .color(.white.opacity(0.65)), lineWidth: 1.5)
+                    context.stroke(marker, with: .color(.white.opacity(0.65)), lineWidth: 1.5 * metrics.scale)
                     if player.role == .goalkeeper {
-                        context.stroke(Path(ellipseIn: bounds.insetBy(dx: 3, dy: 3)), with: .color(.white.opacity(0.8)), lineWidth: 1)
+                        context.stroke(Path(ellipseIn: bounds.insetBy(dx: 3 * metrics.scale, dy: 3 * metrics.scale)),
+                                       with: .color(.white.opacity(0.8)), lineWidth: metrics.scale)
                     }
-                    context.draw(Text(player.label).font(.system(size: radius * 0.85, weight: .heavy))
+                    context.draw(Text(player.label).font(.system(size: metrics.animationLabelFont, weight: .heavy))
                         .foregroundStyle(player.team == .home ? CoachPalette.ink : .white), at: point)
                 }
                 let ball = projection.location(frame.ball)
-                context.draw(Text(Image(systemName: "soccerball")).font(.system(size: 24)).foregroundStyle(.white), at: ball)
+                context.draw(Text(Image(systemName: "soccerball")).font(.system(size: metrics.animationBallFont)).foregroundStyle(.white), at: ball)
             }
         }
         .background(CoachPalette.surface, in: RoundedRectangle(cornerRadius: 22))
