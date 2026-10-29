@@ -523,3 +523,23 @@ The hosted checks did **not** produce a passing UI smoke test or screenshots:
 Do not relabel these infrastructure or partial results as successful rendering.
 The native-bar fix should be verified on the owner's physical Duo through
 TestFlight, including drawing, position selection, More actions and AI analysis.
+
+### Native action-bar release: build 7
+
+[Release run 40826411055](https://github.com/ErrantActions/Soccer-Position-iOS/actions/runs/40826411055)
+deployed main commit `484d9c99089ad28f44009c8b6aa12de28fa5720b` as **build 7**.
+All **70 portable Swift tests** and **34 release/tooling guards**, plus PowerShell
+signing guards, passed. Native signed archive/export/upload and cleanup succeeded
+with simulator execution waived in the release job. The archive and IPA both
+retained boolean `ITSAppUsesNonExemptEncryption=false`; no release artifacts
+were uploaded.
+
+Apple reported build `706cd3ac-31b9-43b2-a822-1d33358fa3ec` as `VALID`, not
+expired, with `usesNonExemptEncryption=false` and internal state
+`IN_BETA_TESTING`. Existing internal-group access and English testing notes were
+verified; no external group was changed.
+
+The separate simulator UI diagnostics remain incomplete as documented above.
+Do not count the portable tests or successful archive as a passing native-bar
+interaction test. Update through TestFlight and verify the actual native edge
+bar on the physical Duo.
