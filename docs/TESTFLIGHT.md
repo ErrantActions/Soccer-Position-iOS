@@ -150,8 +150,11 @@ be coordinated to avoid a race between preflight and upload.
 
 After preflight: generate the actual CoachAI Xcode project, test both simulator
 destinations, archive for a physical device, export, and upload via `altool`.
-Simulator validation builds once, requires both devices on the selected SDK's
-runtime, and runs each destination sequentially. Boot readiness is limited to
+Simulator validation builds once, selects each device's newest installed iOS 27
+runtime no newer than the selected SDK, and runs each destination sequentially.
+The runner currently supplies regular iPhones on iOS 27.0 and Duo on iOS 27.1;
+both are supported by Xcode 27.1, so identical runtime versions are not required.
+Boot readiness is limited to
 150 seconds and each simulator's test process to 240 seconds; a timeout fails
 the job rather than proceeding to signing. Only simulators started by the helper
 are shut down. Local result bundles are not uploaded as artifacts.
@@ -219,7 +222,7 @@ No public App Store release is submitted by these workflows.
   The first run compiled and linked the app and test bundle, but test execution
   hung and reached the job's 30-minute timeout. Its log includes an Xcode SDK-record
   `invalidDigitCount` diagnostic; it does not establish passing native tests.
-  The test harness now selects SDK-matched runtimes, checks boot readiness and
+  The test harness now selects SDK-compatible runtimes, checks boot readiness and
   tests individual destinations with bounded waits instead of one multi-destination run.
 - The TestFlight tab was verified to show **Submit a build to start testing**.
   No signed archive, TestFlight upload, Apple processing or physical iPhone

@@ -84,7 +84,7 @@ class SimulatorTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             simulators.select_devices(data, "27.1")
 
-    def test_requires_both_devices_on_the_selected_sdk_runtime(self):
+    def test_selects_newest_compatible_runtime_for_each_device(self):
         data = {"devices": {
             "com.apple.CoreSimulator.SimRuntime.iOS-27-0": [
                 {"name": "iPhone 18", "isAvailable": True, "udid": "old-compact"},
@@ -93,8 +93,11 @@ class SimulatorTests(unittest.TestCase):
                 {"name": "iPhone Duo", "isAvailable": True, "udid": "duo"},
             ],
         }}
-        with self.assertRaises(ValueError):
-            simulators.select_devices(data, "27.1")
+        self.assertEqual([device["udid"] for device in simulators.select_devices(data, "27.1")], ["old-compact", "duo"])
+        data["devices"]["com.apple.CoreSimulator.SimRuntime.iOS-27-2"] = [
+            {"name": "iPhone 18", "isAvailable": True, "udid": "future-compact"}
+        ]
+        self.assertEqual([device["udid"] for device in simulators.select_devices(data, "27.1")], ["old-compact", "duo"])
         data["devices"]["com.apple.CoreSimulator.SimRuntime.iOS-27-1"].append(
             {"name": "iPhone 18", "isAvailable": True, "udid": "compact"}
         )

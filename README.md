@@ -36,7 +36,7 @@ bash tools/prepare-ios.sh
 bash tools/test-ios.sh
 ```
 
-Install both iPhone Duo and non-Duo simulators matching the selected iOS SDK.
+Install both iPhone Duo and non-Duo iOS 27 simulators compatible with the selected SDK.
 The app and tests build once, then each simulator is booted and tested separately
 with explicit timeouts. Results remain local under the ignored build directory.
 Windows can run the Python/Node guard tests, parse plists and check shell/workflow

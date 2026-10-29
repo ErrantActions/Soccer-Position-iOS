@@ -1,4 +1,4 @@
-"""Build once, then test SDK-matched simulators sequentially with bounded waits."""
+"""Build once, then test SDK-compatible simulators sequentially with bounded waits."""
 import json
 import os
 import re
@@ -11,17 +11,21 @@ from pathlib import Path
 def select_devices(data: dict, sdk: str) -> list[dict]:
     if not re.fullmatch(r"27\.\d+(?:\.\d+)?", sdk):
         raise ValueError("Select the documented iOS 27 simulator SDK.")
-    version = "-".join(sdk.split(".")[:2])
-    runtime = f"com.apple.CoreSimulator.SimRuntime.iOS-{version}"
+    runtimes = []
+    for runtime, entries in data["devices"].items():
+        match = re.fullmatch(r"com\.apple\.CoreSimulator\.SimRuntime\.iOS-27-(\d+)(?:-(\d+))?", runtime)
+        if match and int(match.group(1)) <= int(sdk.split(".")[1]):
+            runtimes.append(((int(match.group(1)), int(match.group(2) or 0)), runtime, entries))
     devices = [
-        device
-        for device in data["devices"].get(runtime, [])
+        {**device, "runtime": runtime}
+        for _, runtime, entries in sorted(runtimes, key=lambda item: item[0], reverse=True)
+        for device in entries
         if device.get("isAvailable") and "iPhone" in device["name"]
     ]
     duo = next((device for device in devices if "Duo" in device["name"]), None)
     compact = next((device for device in devices if "Duo" not in device["name"]), None)
     if not duo or not compact:
-        raise ValueError(f"Install both an iPhone Duo and a non-Duo simulator for iOS {sdk}.")
+        raise ValueError(f"Install iPhone Duo and non-Duo iOS 27 simulators compatible with SDK {sdk}.")
     return [compact, duo]
 
 
@@ -87,7 +91,10 @@ def main() -> None:
         ["xcrun", "simctl", "list", "devices", "available", "--json"], text=True, timeout=30
     ))
     devices = select_devices(data, sdk)
-    print(f"Testing iOS {sdk}: " + ", ".join(device["name"] for device in devices), flush=True)
+    print(f"Testing with iOS SDK {sdk}: " + ", ".join(
+        f"{device['name']} ({device['runtime'].removeprefix('com.apple.CoreSimulator.SimRuntime.').replace('-', '.')})"
+        for device in devices
+    ), flush=True)
     test_devices(devices)
 
 
