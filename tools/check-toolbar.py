@@ -8,6 +8,18 @@ from pathlib import Path
 from ios_tests import run_command, select_devices
 
 
+def toolbar_test_command(identifier: str, results: Path) -> list[str]:
+    return [
+        "xcodebuild", "test", "-project", "CoachAI.xcodeproj", "-scheme", "CoachAI",
+        "-configuration", "Debug", "-destination", f"platform=iOS Simulator,id={identifier}",
+        "-destination-timeout", "60", "-parallel-testing-enabled", "NO",
+        "-only-testing:CoachAIUITests/ToolbarSmokeTests/testNativeToolbarIsPopulatedAndDrawingActionWorks",
+        "-test-timeouts-enabled", "YES", "-maximum-test-execution-time-allowance", "120",
+        "-derivedDataPath", "build/DerivedData", "-resultBundlePath", str(results),
+        "CODE_SIGNING_ALLOWED=YES", "CODE_SIGN_IDENTITY=-", "CODE_SIGN_STYLE=Automatic", "DEVELOPMENT_TEAM=",
+    ]
+
+
 def main() -> None:
     if sys.platform != "darwin":
         raise ValueError("The rendered toolbar check requires macOS and Xcode.")
@@ -29,15 +41,7 @@ def main() -> None:
             run_command(["xcrun", "simctl", "boot", identifier], 30, "Booting the Duo UI-check simulator")
             started = True
         run_command(["xcrun", "simctl", "bootstatus", identifier, "-b"], 150, "Waiting for Duo simulator readiness")
-        run_command([
-            "xcodebuild", "test", "-project", "CoachAI.xcodeproj", "-scheme", "CoachAI",
-            "-configuration", "Debug", "-destination", f"platform=iOS Simulator,id={identifier}",
-            "-destination-timeout", "60", "-parallel-testing-enabled", "NO",
-            "-only-testing:CoachAIUITests/ToolbarSmokeTests/testNativeToolbarIsPopulatedAndDrawingActionWorks",
-            "-test-timeouts-enabled", "YES", "-maximum-test-execution-time-allowance", "120",
-            "-derivedDataPath", "build/DerivedData", "-resultBundlePath", str(results),
-            "CODE_SIGNING_ALLOWED=YES", "CODE_SIGN_IDENTITY=-", "CODE_SIGN_STYLE=Automatic", "DEVELOPMENT_TEAM=",
-        ], 420, "Checking visible native toolbar controls and their drawing action")
+        run_command(toolbar_test_command(identifier, results), 420, "Checking visible native toolbar controls and their drawing action")
     finally:
         try:
             if results.exists():

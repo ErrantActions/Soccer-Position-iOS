@@ -331,6 +331,7 @@ class ExportComplianceTests(unittest.TestCase):
                     )
                 release.validate_ipa_export_compliance(ipa)
 
+
     def test_rejects_an_ipa_missing_the_declaration(self):
         with tempfile.TemporaryDirectory() as temporary:
             ipa = Path(temporary) / "synthetic.ipa"
@@ -353,6 +354,30 @@ class ExportComplianceTests(unittest.TestCase):
             ipa.write_bytes(b"synthetic invalid archive")
             with self.assertRaisesRegex(ValueError, "no readable CoachAI"):
                 release.validate_ipa_export_compliance(ipa)
+
+
+class ToolbarCheckTests(unittest.TestCase):
+    def setUp(self):
+        spec = importlib.util.spec_from_file_location("toolbar_check", TOOLS / "check-toolbar.py")
+        self.module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.module)
+
+    def test_ui_check_is_one_simulator_one_test_and_ad_hoc_not_distribution_signing(self):
+        command = self.module.toolbar_test_command("synthetic-duo", Path("result.xcresult"))
+        self.assertEqual(command.count("-destination"), 1)
+        self.assertIn("platform=iOS Simulator,id=synthetic-duo", command)
+        selectors = [item for item in command if item.startswith("-only-testing:")]
+        self.assertEqual(selectors, [
+            "-only-testing:CoachAIUITests/ToolbarSmokeTests/testNativeToolbarIsPopulatedAndDrawingActionWorks"
+        ])
+        self.assertIn("CODE_SIGN_IDENTITY=-", command)
+        self.assertIn("DEVELOPMENT_TEAM=", command)
+        self.assertFalse(any("PROVISIONING_PROFILE" in item or "Apple Distribution" in item for item in command))
+
+    def test_render_check_cannot_run_on_windows(self):
+        with patch.object(self.module.sys, "platform", "win32"):
+            with self.assertRaisesRegex(ValueError, "requires macOS"):
+                self.module.main()
 
 
 if __name__ == "__main__":

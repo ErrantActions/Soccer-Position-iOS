@@ -13,6 +13,9 @@ Apple's store name "CoachAI" was unavailable; the on-device display name remains
 - Optional position heat spot and goal-side guide; accessible ball sliders.
 - Pitch-first dark coaching interface with a striped field, distinct role markers,
   quick scenario presets and large position controls.
+- The native navigation toolbar exposes position, drawing, AI analysis and a More
+  menu backed by the same state as the coaching panels. iOS adapts this real
+  toolbar to Duo's vertical edge bar; custom control cards alone do not populate it.
 - Compare two roles against the same ball; draw smoothed curves or straight passes
   with optional ball/player endpoint snapping, undo and redo. Tiny accidental
   gestures are ignored. Finished routes survive rotation and resizing; changing

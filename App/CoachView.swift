@@ -57,7 +57,7 @@ struct CoachView: View {
         acceptedPlan?.recommendation(for: role) ?? Positioning.recommend(ball: ball, position: role)
     }
 
-    var body: some View {
+    private var coachingBoard: some View {
         GeometryReader { proxy in
             let division = activeDivision(proxy)
             let duo = hasDuoDisplay(proxy)
@@ -91,6 +91,19 @@ struct CoachView: View {
                     .position(x: coach.midX, y: coach.midY)
                 }
             }
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            coachingBoard
+                .navigationTitle("CoachAI")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar { nativeControls }
+                .toolbar(.visible, for: .bottomBar)
+                .toolbarBackground(CoachPalette.ink, for: .navigationBar, .bottomBar)
+                .toolbarBackground(.visible, for: .bottomBar)
+                .toolbarColorScheme(.dark, for: .navigationBar, .bottomBar)
         }
         .preferredColorScheme(.dark)
         .tint(CoachPalette.lime)
@@ -138,6 +151,50 @@ struct CoachView: View {
         .onDisappear { invalidateExplanation(); intelligence.cancel() }
         .sensoryFeedback(.selection, trigger: position)
         .sensoryFeedback(.selection, trigger: routeDrawing.routes.count)
+    }
+
+    @ToolbarContentBuilder private var nativeControls: some ToolbarContent {
+        ToolbarItemGroup(placement: .bottomBar) {
+            Menu {
+                Picker("Your position", selection: $position) {
+                    ForEach(Position.allCases) { Text($0.label).tag($0) }
+                }
+                .pickerStyle(.inline)
+            } label: {
+                Label("Position \(position.rawValue)", systemImage: "person.crop.circle")
+            }
+            .accessibilityLabel("Choose position")
+            .accessibilityValue(position.label)
+            .accessibilityIdentifier("coach.toolbar.position")
+
+            Button { drawing.toggle() } label: {
+                Label(drawing ? "Done drawing" : "Draw route", systemImage: drawing ? "checkmark" : "pencil.tip.crop.circle")
+            }
+            .tint(drawing ? CoachPalette.lime : CoachPalette.muted)
+            .accessibilityValue(drawing ? "Drawing routes" : "Moving players")
+            .accessibilityIdentifier("coach.toolbar.draw")
+
+            Button(action: positioningAction) {
+                Label(intelligence.analysis.isBusy ? "Cancel analysis" : "Analyze positions",
+                      systemImage: intelligence.analysis.isBusy ? "stop.circle" : "sparkles")
+            }
+            .disabled(isGenerating)
+            .accessibilityHint("Enables AI Positioning if it is off.")
+            .accessibilityIdentifier("coach.toolbar.analyze")
+
+            Menu {
+                Button("Undo route", systemImage: "arrow.uturn.backward") { routeDrawing.undo() }
+                    .disabled(!routeDrawing.canUndo)
+                Button("Redo route", systemImage: "arrow.uturn.forward") { routeDrawing.redo() }
+                    .disabled(!routeDrawing.canRedo)
+                Button("Reset ball", systemImage: "arrow.counterclockwise", action: resetBallPosition)
+                Toggle("Position glow", isOn: $showHeat)
+                Toggle("Goal-side guide", isOn: $showGuides)
+            } label: {
+                Label("More pitch actions", systemImage: "ellipsis")
+            }
+            .accessibilityIdentifier("coach.toolbar.more")
+        }
     }
 
     private func field(horizontal: Bool) -> some View {
@@ -343,17 +400,19 @@ struct CoachView: View {
     }
 
     private var resetBall: some View {
-        Button {
-            withAnimation(reduceMotion ? nil : .smooth(duration: 0.25)) {
-                ball = FieldPoint(depth: 0.65, width: 0.35)
-            }
-        } label: {
+        Button(action: resetBallPosition) {
             Label("Reset ball", systemImage: "arrow.counterclockwise")
                 .font(.caption.weight(.medium))
                 .foregroundStyle(CoachPalette.muted)
                 .frame(minHeight: 44)
         }
         .buttonStyle(.plain)
+    }
+
+    private func resetBallPosition() {
+        withAnimation(reduceMotion ? nil : .smooth(duration: 0.25)) {
+            ball = FieldPoint(depth: 0.65, width: 0.35)
+        }
     }
 
     private var rolePicker: some View {
@@ -577,13 +636,7 @@ struct CoachView: View {
                 .labelsHidden()
                 selectedPlayerControls
                 Toggle("Analyze after edits", isOn: $autoAnalyze).font(.subheadline)
-                Button {
-                    if intelligence.analysis.isBusy {
-                        intelligence.cancel(message: "Analysis cancelled. Showing the instant guide.")
-                    } else {
-                        analyzePositions()
-                    }
-                } label: {
+                Button(action: positioningAction) {
                     HStack(spacing: 9) {
                         if intelligence.analysis.isBusy { ProgressView().tint(CoachPalette.ai) }
                         Text(intelligence.analysis.isBusy ? "Cancel analysis" : "Analyze positions")
@@ -668,6 +721,16 @@ struct CoachView: View {
         guard aiPositioning, scenePhase == .active else { return }
         invalidateExplanation()
         intelligence.analyze(scene, debounced: debounced)
+    }
+
+    private func positioningAction() {
+        if !aiPositioning {
+            aiPositioning = true
+        } else if intelligence.analysis.isBusy {
+            intelligence.cancel(message: "Analysis cancelled. Showing the instant guide.")
+        } else {
+            analyzePositions()
+        }
     }
 
     private var pitchSettings: some View {

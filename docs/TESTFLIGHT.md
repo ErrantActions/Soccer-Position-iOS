@@ -467,3 +467,27 @@ expired, with `usesNonExemptEncryption=false` and internal state
 `IN_BETA_TESTING`. Existing internal-group access and English testing notes were
 verified. No external group was changed; physical Duo behavior remains to check
 through TestFlight.
+
+## Native Duo action-bar regression check
+
+The custom coaching pane and the system action bar are different surfaces.
+Reordering the cards did not register any actions with the native bar. The app
+now hosts the board in `NavigationStack` and supplies real bottom-toolbar items;
+iOS can adapt those items into Duo's shared vertical bar. Position, drawing,
+analysis/cancellation, undo/redo, reset and pitch-layer actions use the same state
+and helpers as the existing cards.
+
+For this visible-UI regression, the existing manual Simulator validation workflow
+has an optional `toolbar_smoke_check=true` mode. It runs **one** UI test on **one**
+Duo simulator in portrait and landscape, checks native buttons are present and
+hittable, and toggles drawing through the actual toolbar button. It skips the
+portable/unit suites in that diagnostic job; the separate TestFlight job still
+runs all release tests once. This is not a blanket simulator test run.
+
+The simulator-only app/test runner use ad-hoc signing (`CODE_SIGN_IDENTITY=-`),
+not Apple Distribution credentials. Boot and test processes have bounded waits.
+Only PNG screenshot attachments may be uploaded, for one day; result bundles,
+logs, archives and signing files are not artifacts. The release continues to use
+`run_simulator_tests=false` under the owner's standing phone-testing preference.
+Do not claim the render check passed unless its native assertions and screenshot
+export actually succeeded.
