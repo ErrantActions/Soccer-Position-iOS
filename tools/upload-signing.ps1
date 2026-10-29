@@ -20,11 +20,11 @@ $repo = Invoke-GhJson @('api', "repos/$repository")
 if ($repo.private -or $repo.fork) { throw 'Publication approval and an independent public repository are required first.' }
 $environment = Invoke-GhJson @('api', "repos/$repository/environments/app-store")
 $review = @($environment.protection_rules | Where-Object { $_.type -eq 'required_reviewers' })
-if ($review.Count -ne 1 -or $review[0].reviewers.Count -ne 1 -or
+if ($review.Count -gt 0 -and ($review.Count -ne 1 -or $review[0].reviewers.Count -ne 1 -or
     $review[0].reviewers[0].type -ne 'User' -or
     $review[0].reviewers[0].reviewer.id -ne 11909244 -or
-    $review[0].reviewers[0].reviewer.login -ne 'ErrantActions') {
-    throw 'The sole required reviewer must be the owner ErrantActions. Refusing to upload signing secrets.'
+    $review[0].reviewers[0].reviewer.login -ne 'ErrantActions')) {
+    throw 'If reviewer protection is enabled, the sole required reviewer must be the owner ErrantActions.'
 }
 if ($environment.can_admins_bypass -ne $false) {
     throw 'Admin bypass must be explicitly disabled before signing secrets are uploaded.'

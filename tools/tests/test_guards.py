@@ -2,7 +2,9 @@ import copy
 import datetime as dt
 import importlib.util
 import json
+import os
 import plistlib
+import shutil
 import subprocess
 import sys
 import unittest
@@ -154,6 +156,61 @@ class SimulatorTests(unittest.TestCase):
 
 
 class ReleaseBoundaryTests(unittest.TestCase):
+    @unittest.skipUnless(shutil.which("openssl"), "OpenSSL is required for the container integration test")
+    def test_real_openssl_can_repackage_a_modern_p12(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            certificate = root / "synthetic.pem"
+            key = root / "synthetic-key.pem"
+            original = root / "synthetic.p12"
+            env = {**os.environ, "COACHAI_CERT_PASSWORD": "synthetic-test-password"}
+            subprocess.run(
+                ["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "1",
+                 "-subj", "/CN=CoachAI synthetic test", "-keyout", str(key), "-out", str(certificate)],
+                check=True, capture_output=True, env=env,
+            )
+            subprocess.run(
+                ["openssl", "pkcs12", "-export", "-inkey", str(key), "-in", str(certificate),
+                 "-passout", "env:COACHAI_CERT_PASSWORD", "-out", str(original)],
+                check=True, capture_output=True, env=env,
+            )
+            converted = release.normalize_certificate(original, root, dict(os.environ), "synthetic-test-password")
+            verified = subprocess.run(
+                ["openssl", "pkcs12", "-in", str(converted), "-noout", "-info",
+                 "-passin", "env:COACHAI_CERT_PASSWORD"],
+                check=True, capture_output=True, text=True, env=env,
+            )
+            self.assertIn("pbeWithSHA1And3-KeyTripleDES-CBC", verified.stderr)
+            self.assertIn("MAC: sha1", verified.stderr)
+            self.assertTrue(original.exists())
+
+    def test_normalizes_certificate_without_plaintext_files_or_password_arguments(self):
+        encrypted_key = "synthetic encrypted test key material"
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            with patch.object(release, "run", side_effect=[encrypted_key, ""]) as run:
+                result = release.normalize_certificate(Path("original.p12"), root, {}, "synthetic-password")
+            self.assertEqual(result, root / "certificate-apple.p12")
+            self.assertFalse((root / "certificate-encrypted.pem").exists())
+        self.assertEqual(run.call_count, 2)
+        first, second = run.call_args_list
+        self.assertIn("env:COACHAI_CERT_PASSWORD", first.args[0])
+        self.assertNotIn("synthetic-password", first.args[0])
+        self.assertNotIn("-nodes", first.args[0])
+        self.assertIn("-passout", first.args[0])
+        self.assertEqual(first.kwargs["env"]["COACHAI_CERT_PASSWORD"], "synthetic-password")
+        self.assertIn("-passin", second.args[0])
+        self.assertIn("PBE-SHA1-3DES", second.args[0])
+        self.assertIn("sha1", second.args[0])
+        self.assertNotIn(encrypted_key, second.args[0])
+
+    def test_failed_certificate_decoding_never_prints_process_output(self):
+        process = subprocess.CompletedProcess([], 1, stdout=b"synthetic private data", stderr=b"synthetic sensitive log")
+        with patch.object(release.subprocess, "run", return_value=process):
+            with self.assertRaisesRegex(RuntimeError, "Verify its password") as error:
+                release.run(["openssl"], "Distribution certificate decoding", env={})
+        self.assertNotIn("synthetic", str(error.exception))
+
     def test_release_runs_simulator_tests_by_default(self):
         with patch.object(release, "run") as run:
             release.prepare_project({})

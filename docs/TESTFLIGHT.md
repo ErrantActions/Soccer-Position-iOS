@@ -15,10 +15,12 @@ approval. Verify the actual index with `git ls-files --stage`, ignored files wit
 untrack secrets. If an actual credential is found, stop, revoke it and obtain
 approval before any history rewrite. Never print its value.
 
-Repository admins, the selected reviewer, workflow changes, Xcode build scripts,
-Homebrew tools and code executed in approved jobs must be trusted. Environment
-approval is not a sandbox: review the **exact commit** before approving. Changes
-to workflows or signing helpers can exfiltrate environment secrets after approval.
+Repository admins, repository writers, workflow changes, Xcode build scripts,
+Homebrew tools and code executed in release jobs must be trusted. The owner
+explicitly removed GitHub's separate required-reviewer step and authorizes releases
+in chat instead. Review the **exact commit** before dispatch. GitHub cannot enforce
+chat approval: anyone with workflow-dispatch permissions can start a release from
+main. Changes to workflows or signing helpers can exfiltrate environment secrets.
 Secrets are not exposed to pull requests or forks by these manual-only workflows;
 the release additionally requires this exact repository and the main ref.
 
@@ -32,14 +34,15 @@ After approved publication, verify using GitHub settings/API:
    These complement local audits; neither detects every private URL or secret.
 3. Actions default token permissions: read; do not allow Actions to approve PRs.
    Each workflow also declares `contents: read`.
-4. `app-store` environment: required reviewer `ErrantActions`; custom branch policy
-   permitting **only the branch `main`**, no tag policies. Disable admin bypass
+4. `app-store` environment: no required reviewers, as explicitly requested by the
+   owner; custom branch policy permitting **only the branch `main`**, no tag
+   policies. Disable admin bypass
    before uploading signing secrets. The helper fails closed if bypass status
-   cannot be verified as disabled. A sole owner may initiate and explicitly approve
-   their own deployment, so prevent-self-review is not enabled.
-5. Upload secrets only after required-reviewer and branch protection are confirmed.
-   Required reviewers were unavailable on the account's private staging plan;
-   do not remove approval requirements as a workaround or change billing limits.
+   cannot be verified as disabled. If reviewer protection is restored, the helper
+   accepts only the sole owner `ErrantActions` and leaves that protection intact.
+5. Upload secrets only after the main-only policy is confirmed. Do not remove any
+   other protections or change billing limits to work around errors. The reviewer
+   exception is an explicit owner decision, not a requirement for free builds.
 6. Preserve existing protection rules when uploading secrets. The upload helper
    reads/verifies them and never creates or updates the environment.
 
@@ -114,8 +117,8 @@ in a command or chat. Run the helper locally, substituting **file paths and IDs*
 Use your real 10-character key/team IDs and issuer UUID. `-GhPath` can point at a
 portable official `gh.exe`. The certificate password is prompted with masked
 entry and sent to GitHub over stdin, never as a command argument or plaintext file.
-The helper verifies public/non-fork status, sole-owner approval, disabled admin
-bypass and main-only rules
+The helper verifies public/non-fork status, disabled admin bypass and main-only
+rules; any configured reviewer must be the sole owner
 before sending values; a partial network failure may require rerunning it.
 
 Encrypted **app-store environment** secrets:
@@ -139,6 +142,12 @@ exact bundle ID, expiry (at least one hour), App Store distribution type, debug
 entitlement, valid signing identity and certificate membership in the profile.
 The app's required-entitlements file is currently empty. Adding capabilities
 fails closed until profile validation is updated.
+
+The encrypted P12 is repackaged in the restricted temporary job directory using
+Apple-compatible PKCS12 encryption before keychain import. The intermediate PEM
+private key remains encrypted and is immediately removed after repackaging; no
+plaintext private-key file is written. The password stays in the signing subprocess environment, not command
+arguments, build environments or logs. The original credential is not modified.
 
 The upload key authenticates to App Store Connect, resolves the exact bundle ID,
 and paginates **all** existing builds. The next integer build number exceeds every
@@ -183,7 +192,9 @@ tests do not establish model availability.
    disable **Run simulator tests** for the owner-approved physical-phone path.
    Apple does not require simulator tests for TestFlight. The signed device archive
    still compiles the app, and signing/app/build-number checks are never waived.
-4. Inspect the exact commit, then explicitly approve the `app-store` deployment.
+4. Inspect the exact commit and obtain the owner's release approval in chat before
+   dispatch. There is no separate `app-store` reviewer prompt under the current
+   owner-selected policy. The agent must not dispatch unrequested releases.
 5. Successful job upload means Apple accepted the upload request, not that
    processing finished. Check App Store Connect > CoachAI > TestFlight.
 6. Resolve export compliance and processing errors; assign internal testers.
@@ -201,19 +212,20 @@ No public App Store release is submitted by these workflows.
   Push only `main`; never mirror local editor/agent checkpoint refs.
 - Secret scanning and push protection are enabled; the alert list was empty.
   Default Actions token permissions are read-only, with PR approval disabled.
-- Effective `app-store` rules were read back: the sole required reviewer is
-  `ErrantActions`, only the branch `main` may deploy, and admin bypass is disabled.
-  No signing secrets were uploaded. Keep these rules intact during secret upload.
+- Effective `app-store` rules were read back: only the branch `main` may deploy
+  and admin bypass is disabled. The owner later explicitly removed the separate
+  required-reviewer step in favor of chat release approval. All six encrypted
+  signing secrets are now present; preserve existing rules during secret upload.
 - Apple membership/team was verified interactively and `APPLE_TEAM_ID` was saved
   only as an environment variable, not in source.
 - The explicit soccer App ID and CoachAI Soccer Positions app record were created.
   A matching **CoachAI App Store Distribution** profile was generated using the
   team's existing valid distribution certificate. The portal reports expiry
   2027-10-27. No existing certificate was revoked or replaced.
-- The profile is available in Apple Developer > Profiles; local download/upload
-  is still needed. The certificate's original `.p12` with private key and password,
-  plus an App Store Connect upload `.p8`, must be supplied through the secure local
-  helper. They cannot be recovered from existing encrypted GitHub secrets.
+- The matching profile was downloaded to restricted storage outside Git. Existing
+  local `.p12` and App Store Connect upload `.p8` credentials were reused through
+  the secure local helper, with the password entered in a masked terminal.
+  Existing encrypted GitHub secrets were not read back or copied.
 - Eleven local Python/Node guard tests and the PowerShell owner-review/admin-bypass
   tests passed, along with plist/icon, shell, Python, PowerShell and workflow checks.
   The workflow validator required the documented Xcode 27 preview-label exception.

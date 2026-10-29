@@ -29,10 +29,42 @@ def mask(value: str) -> None:
 
 
 def run(args: list[str], label: str, *, env: dict[str, str], capture: bool = False) -> str:
-    result = subprocess.run(args, cwd=ROOT, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    result = subprocess.run(
+        args, cwd=ROOT, env=env,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    )
     if result.returncode:
+        if label == "Distribution certificate decoding":
+            raise RuntimeError(
+                "The distribution P12 could not be decoded. Verify its password and certificate file "
+                "through the secure local upload helper; signing logs are not published."
+            )
         raise RuntimeError(f"{label} failed (exit {result.returncode}). Raw signing logs are intentionally not published; reproduce locally with trusted credentials.")
     return result.stdout.decode("utf-8", errors="strict") if capture else ""
+
+
+def normalize_certificate(cert: Path, work: Path, env: dict[str, str], password: str) -> Path:
+    password_env = {**env, "COACHAI_CERT_PASSWORD": password}
+    # OpenSSL keeps the intermediate private key encrypted; never use -nodes here.
+    decoded = run(
+        ["openssl", "pkcs12", "-in", str(cert),
+         "-passin", "env:COACHAI_CERT_PASSWORD", "-passout", "env:COACHAI_CERT_PASSWORD"],
+        "Distribution certificate decoding", env=password_env, capture=True,
+    )
+    encrypted_pem = work / "certificate-encrypted.pem"
+    encrypted_pem.write_text(decoded)
+    compatible = work / "certificate-apple.p12"
+    try:
+        run(
+            ["openssl", "pkcs12", "-export", "-in", str(encrypted_pem),
+             "-passin", "env:COACHAI_CERT_PASSWORD",
+             "-keypbe", "PBE-SHA1-3DES", "-certpbe", "PBE-SHA1-3DES", "-macalg", "sha1",
+             "-passout", "env:COACHAI_CERT_PASSWORD", "-out", str(compatible)],
+            "Apple-compatible certificate packaging", env=password_env,
+        )
+    finally:
+        encrypted_pem.unlink()
+    return compatible
 
 
 def prepare_project(env: dict[str, str]) -> None:
@@ -93,6 +125,7 @@ def release() -> None:
         cert = work / "certificate.p12"
         profile_file = work / "profile.mobileprovision"
         cert.write_bytes(base64.b64decode(os.environ["DISTRIBUTION_CERTIFICATE_BASE64"], validate=True))
+        cert = normalize_certificate(cert, work, env, os.environ["DISTRIBUTION_CERTIFICATE_PASSWORD"])
         profile_file.write_bytes(base64.b64decode(os.environ["PROVISIONING_PROFILE_BASE64"], validate=True))
         decoded = run(["security", "cms", "-D", "-i", str(profile_file)], "Profile decoding", env=env, capture=True)
         profile = plistlib.loads(decoded.encode())

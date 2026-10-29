@@ -52,7 +52,9 @@ use the documented standard `xcode-27` GitHub-hosted runner with Xcode 27.1.
 Both are blocked in private staging to avoid unapproved paid compute.
 For a release candidate run **TestFlight only**. Its simulator tests default on,
 but can be explicitly disabled with `run_simulator_tests=false` for owner-approved
-phone testing. Device compilation, signing preflight and approval remain required.
+phone testing. Device compilation and signing preflight remain required.
+The owner authorizes releases in chat; there is no second GitHub reviewer step.
+GitHub enforces manual dispatch and main-only deployment, not chat approval.
 
 ## Provenance
 
