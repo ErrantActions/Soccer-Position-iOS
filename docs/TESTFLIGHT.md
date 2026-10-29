@@ -1,5 +1,28 @@
 # CoachAI publication and TestFlight runbook
 
+## External TV readability release: build 13
+
+Source commit `af7a6026be69bed64fe653875da61a744bbf86a7` passed **170 portable
+Swift tests**, **34 release guards**, PowerShell upload guards, native archive,
+IPA export, compliance validation and upload in
+[release run 40970197389](https://github.com/ErrantActions/Soccer-Position-iOS/actions/runs/40970197389).
+Local workflow lint, whitespace and staged credential-pattern checks passed.
+No simulator execution, duplicate validation run or release artifacts were
+requested; temporary signing cleanup succeeded.
+
+Local system DNS initially blocked publication. A temporary per-command DNS
+override restored access while preserving HTTPS hostname/certificate verification;
+no system DNS, hosts file or global Git/network setting was changed.
+
+Apple build `25f6366b-c733-4c16-bc64-93e6e4144422` (version **13**) was verified
+as `VALID`, not expired, `usesNonExemptEncryption=false` and `IN_BETA_TESTING`.
+Existing automatic internal group access and English testing notes were verified.
+No external group or public App Store submission was changed.
+
+Tests establish larger 720p/1080p/4K audience metric thresholds, monotonic size
+choices, edge clearance, unchanged device metrics, real pitch aspect and normalized
+coordinate roundtrips. Physical readability on the owner's TV still needs checking.
+
 ## External TV marker readability checks
 
 External fields use proportional audience sizing with at least a 2x base scale
