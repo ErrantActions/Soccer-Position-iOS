@@ -566,3 +566,19 @@ that changed the available field height when scrolling the settings, without
 returning to an unpopulated native Duo bar. Physical title/bar behavior still
 needs the owner's phone check; hosted simulator UI diagnostics remain incomplete
 as recorded above.
+
+### Real-field/title-free release: build 8
+
+[Release run 40828474781](https://github.com/ErrantActions/Soccer-Position-iOS/actions/runs/40828474781)
+deployed main commit `7978cc81bcf8c5299048f31491e1c9b796da70d8` as **build 8**.
+All **81 Swift tests**, including 11 exact physical-pitch geometry tests, and
+**34 release/tooling guards** passed. Native signed archive/export/upload and
+cleanup succeeded; simulator execution was waived and no artifacts were uploaded.
+Both archive and IPA retained boolean `ITSAppUsesNonExemptEncryption=false`.
+
+Apple reported build `bba769b3-204b-4bf6-86b4-6f0d0dc03cf8` as `VALID`, not
+expired, with `usesNonExemptEncryption=false` and internal state
+`IN_BETA_TESTING`. Existing internal-group access and English testing notes were
+verified; no external group was changed. Verify the title-free/native-toolbar
+combination and scroll stability on the physical Duo; no simulator UI pass or
+phone installation is claimed.
