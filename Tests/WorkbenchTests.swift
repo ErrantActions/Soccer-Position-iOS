@@ -39,11 +39,11 @@ final class WorkbenchTests: XCTestCase {
 
     func testUnknownVersionAndMalformedDataAreRejected() throws {
         let data = try PlayCodec.document(play())
-        let changed = String(decoding: data, as: UTF8.self).replacingOccurrences(of: "\"version\" : 1", with: "\"version\" : 2")
+        let changed = String(decoding: data, as: UTF8.self).replacingOccurrences(of: "\"version\" : 1", with: "\"version\" : 999")
         XCTAssertNotEqual(Data(changed.utf8), data)
         XCTAssertThrowsError(try PlayCodec.importDocument(Data(changed.utf8)))
         XCTAssertThrowsError(try PlayCodec.importDocument(Data("not JSON".utf8)))
-        XCTAssertThrowsError(try PlayCodec.readLibrary(Data("{\"version\":2,\"plays\":[]}".utf8)))
+        XCTAssertThrowsError(try PlayCodec.readLibrary(Data("{\"version\":999,\"plays\":[]}".utf8)))
     }
 
     func testImportRejectsUnknownRolesAndMissingRequiredFields() throws {

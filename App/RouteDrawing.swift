@@ -92,7 +92,7 @@ struct RouteDrawing {
         }
         guard routes.allSatisfy({ route in
             route.count >= 2 && route.allSatisfy {
-                $0.depth.isFinite && $0.width.isFinite && (0...1).contains($0.depth) && (0...1).contains($0.width)
+                $0.isInsideField
             }
         }) else { throw WorkbenchError.invalid("A saved route has invalid coordinates.") }
     }

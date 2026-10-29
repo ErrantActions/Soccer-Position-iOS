@@ -41,6 +41,7 @@ struct SavedPlay: Codable, Equatable, Identifiable, Sendable {
     var updated = Date()
     var board: BoardSnapshot
     var frames: [PlayFrame] = []
+    var animation: TacticalAnimation?
 
     func validate() throws {
         guard !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, title.count <= 80 else {
@@ -51,11 +52,11 @@ struct SavedPlay: Codable, Equatable, Identifiable, Sendable {
         guard validDates.contains(created.timeIntervalSince1970), validDates.contains(updated.timeIntervalSince1970) else {
             throw WorkbenchError.invalid("The play has an unsupported date.")
         }
-        guard (title + notes).unicodeScalars.allSatisfy({ scalar in
-            let value = scalar.value
-            return value == 9 || value == 10 || value == 13 ||
-                (value >= 0x20 && value <= 0xD7FF) || (value >= 0xE000 && value <= 0xFFFD) || value >= 0x10000
-        }) else { throw WorkbenchError.invalid("The play text contains unsupported control characters.") }
+        guard PlayText.isSafe(title + notes) else { throw WorkbenchError.invalid("The play text contains unsupported control characters.") }
+        try animation?.validate()
+        guard animation == nil || frames.isEmpty else {
+            throw WorkbenchError.invalid("A play cannot combine a multi-player animation with an editable-board sequence.")
+        }
         try board.validate()
         guard frames.count <= 24, Set(frames.map(\.id)).count == frames.count else {
             throw WorkbenchError.invalid("A sequence supports up to 24 uniquely identified steps.")
@@ -102,7 +103,7 @@ enum PlayCodec {
     }
     static func document(_ play: SavedPlay) throws -> Data {
         try play.validate()
-        let data = try encoder().encode(Document(version: 1, play: play))
+        let data = try encoder().encode(Document(version: play.animation == nil ? 1 : 2, play: play))
         guard data.count <= maximumDocumentBytes else {
             throw WorkbenchError.invalid("This play is larger than the 2 MB share/import limit. Reduce its steps or routes.")
         }
@@ -111,7 +112,9 @@ enum PlayCodec {
     static func importDocument(_ data: Data) throws -> SavedPlay {
         guard data.count <= maximumDocumentBytes else { throw WorkbenchError.invalid("The play file exceeds 2 MB.") }
         let document = try decoder().decode(Document.self, from: data)
-        guard document.version == 1 else { throw WorkbenchError.invalid("This play file uses an unsupported version.") }
+        guard [1, 2].contains(document.version), document.version == 2 || document.play.animation == nil else {
+            throw WorkbenchError.invalid("This play file uses an unsupported version.")
+        }
         try document.play.validate()
         return document.play
     }
@@ -120,14 +123,16 @@ enum PlayCodec {
             throw WorkbenchError.invalid("The local playbook supports up to 100 uniquely identified plays.")
         }
         for play in plays { _ = try document(play) }
-        let data = try encoder().encode(Library(version: 1, plays: plays))
+        let data = try encoder().encode(Library(version: plays.contains { $0.animation != nil } ? 2 : 1, plays: plays))
         guard data.count <= maximumLibraryBytes else { throw WorkbenchError.invalid("The local playbook exceeds 20 MB.") }
         return data
     }
     static func readLibrary(_ data: Data) throws -> [SavedPlay] {
         guard data.count <= maximumLibraryBytes else { throw WorkbenchError.invalid("The local playbook exceeds 20 MB.") }
         let library = try decoder().decode(Library.self, from: data)
-        guard library.version == 1 else { throw WorkbenchError.invalid("The playbook uses an unsupported version.") }
+        guard [1, 2].contains(library.version), library.version == 2 || library.plays.allSatisfy({ $0.animation == nil }) else {
+            throw WorkbenchError.invalid("The playbook uses an unsupported version.")
+        }
         _ = try self.library(library.plays)
         return library.plays
     }

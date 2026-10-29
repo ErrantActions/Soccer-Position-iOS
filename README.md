@@ -73,6 +73,16 @@ Apple's store name "CoachAI" was unavailable; the on-device display name remains
   or background audio. Speech stops when the scene changes or the app is inactive.
 - Current teammates and opponents can be edited without AI. Reviewed AI suggestions
   can be adopted as editable positions before saving or sequencing.
+- Six researched, original animated tactical patterns show passes and player runs:
+  outside overlap, inside underlap, third-player combination, switch of play,
+  wide press-and-cover and a compact defensive slide. Scrub, step, loop or play at
+  0.5x/1x/2x; Reduce Motion switches to discrete phases. Save a copy in the playbook
+  to rename, annotate, favorite or share it.
+- On **iOS 27+**, field-only external presentation uses Apple's scene-accessory API
+  with supported AirPlay or wired displays. Ball, players, routes, AI suggestions,
+  practice reveals and animated plays appear without the device's control panels
+  or saved notes. A device-side switch blanks the external field. No display is
+  needed to use the app.
 
 The default instant guide is a deliberately simplified native teaching model, not feature parity
 with the web application's full multi-player tactical engine or challenge mode.
@@ -102,6 +112,47 @@ Start **Your turn** to practice. Place your player, then check to reveal the gui
 and zone. Use **Next scenario**, change role, or end practice to continue coaching.
 Practice uses the simplified instant guide, not Apple Intelligence or a professional
 tactical assessment. Spoken cues are manually started and do not read saved notes.
+
+## Animated patterns and presentation
+
+Open **Playbook > Animated tactical patterns**, select a play and press Play.
+Lime represents the coaching team; red represents opposition. These focused
+illustrations show selected players, not full match simulations or offside checks.
+Coordinates, coaching text and diagrams are original CoachAI work. No source
+images, videos, authored drill instructions or match reconstructions are bundled.
+Links in each play explain the underlying principles and open only when tapped:
+
+- [Full-back overlaps and underlaps](https://learning.coachesvoice.com/cv/modern-full-back-explained-alexander-arnold-robertson-alba/)
+- [Third-man combinations](https://learning.coachesvoice.com/cv/third-man-runs-football-tactics-explained-gasperini-guardiola/)
+- [Switching play and defensive recovery](https://learning.coachesvoice.com/cv/switches-of-play-football-tactics-explained/)
+- [Compact blocks and coordinated pressure](https://learning.coachesvoice.com/cv/mid-block-football-tactics-explained/)
+
+These are research references, not affiliations, endorsements or licenses to copy
+those sites' material. Coaching choices remain illustrative and need coach review.
+
+Animated JSON files use schema version 2 and preserve player motion, phases,
+notes and references. Existing version-1 scenes and libraries still load.
+Older app versions reject animated version-2 files rather than show a misleading
+static scene. SVG sharing exports the animation's **opening frame only** and
+labels it as static. Animated clips support 2–22 players, 2–24 phases and up to
+120 seconds. Ordinary editable-board sequences remain a separate format.
+
+For presentation, connect a supported AirPlay display through Control Center, or
+use a video-capable wired adapter, then return to CoachAI. Keep the controller app
+in the foreground. iOS 27+ registers a noninteractive external-display accessory;
+the system chooses when to connect it. Watch the connection status and verify
+the audience view. Blanking keeps that scene black rather than intentionally
+switching back to mirroring the private controls. Before iOS 27, the app retains
+normal operation but does not offer separate field presentation.
+
+**This is not a custom FaceTime/Zoom broadcast.** General device screen sharing,
+system UI, app switching and unsupported receivers may still mirror the phone.
+Never assume the app's external scene hides other applications or system screens.
+Physical receiver/cable behavior needs device verification.
+
+Apple reference: [Presenting content on a connected display](https://developer.apple.com/documentation/uikit/presenting-content-on-a-connected-display).
+The animation viewer reuses the main fold-aware layout policy and real field
+projection; native playback toolbar items remain on the device.
 
 ## Build
 

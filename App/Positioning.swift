@@ -4,6 +4,10 @@ struct FieldPoint: Codable, Equatable, Sendable {
     var depth: Double
     var width: Double
 
+    var isInsideField: Bool {
+        depth.isFinite && width.isFinite && (0...1).contains(depth) && (0...1).contains(width)
+    }
+
     var bounded: FieldPoint {
         FieldPoint(depth: min(1, max(0, depth)), width: min(1, max(0, width)))
     }

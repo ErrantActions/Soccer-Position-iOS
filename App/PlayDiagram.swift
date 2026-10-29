@@ -17,6 +17,7 @@ enum PlayDiagram {
             }
         }
         let titles = lines(play.title, count: 32)
+        let opening = play.animation?.frames.first
         let notes = lines(String(play.notes.prefix(240)), count: 50)
         let header = CGFloat(60 + titles.count * 28)
         let totalHeight = header + 1160 + CGFloat(notes.count * 18 + 85)
@@ -39,7 +40,7 @@ enum PlayDiagram {
         }
         svg += """
         </g><text x="40" y="\(number(header - 10))" fill="#b9c9bf" font-family="sans-serif" font-size="12">
-        CoachAI - \(escape(play.board.scene.formation.rawValue)) - saved editable positions - 105 x 68 m
+        CoachAI - \(opening == nil ? escape(play.board.scene.formation.rawValue) + " - saved editable positions" : "animation opening frame - static diagram") - 105 x 68 m
         </text><g transform="translate(20 \(number(header)))">
         <g fill="#124b37" stroke="#92b6a1" stroke-width="2">\(rectangle(field))</g>
         <g fill="none" stroke="#92b6a1" stroke-width="2">
@@ -61,7 +62,7 @@ enum PlayDiagram {
         }
         svg += "<circle cx=\"\(number(field.midX))\" cy=\"\(number(field.midY))\" r=\"2\" fill=\"#92b6a1\"/>"
         svg += "</g><g fill=\"none\" stroke=\"white\" stroke-width=\"3\" stroke-linecap=\"round\">"
-        for route in play.board.routes {
+        for route in (opening == nil ? play.board.routes : []) {
             guard let first = route.first, let last = route.last else { continue }
             var path = "M \(point(first))"
             for index in 1..<route.count {
@@ -78,18 +79,27 @@ enum PlayDiagram {
             }
         }
         svg += "</g>"
-        for player in play.board.scene.teammates {
-            let location = projection.location(player.point)
-            let color = player.role == play.board.position ? "#c7f567" : "#75ccff"
-            svg += "<circle cx=\"\(number(location.x))\" cy=\"\(number(location.y))\" r=\"18\" fill=\"\(color)\"/>"
-            svg += "<text x=\"\(number(location.x))\" y=\"\(number(location.y + 4))\" text-anchor=\"middle\" font-family=\"sans-serif\" font-size=\"11\" fill=\"#09110f\">\(player.role.rawValue)</text>"
+        if let opening {
+            for player in opening.players {
+                let location = projection.location(player.point)
+                let color = player.team == .home ? "#c7f567" : "#ac3945"
+                svg += "<circle cx=\"\(number(location.x))\" cy=\"\(number(location.y))\" r=\"18\" fill=\"\(color)\"/>"
+                svg += "<text x=\"\(number(location.x))\" y=\"\(number(location.y + 4))\" text-anchor=\"middle\" font-family=\"sans-serif\" font-size=\"11\" fill=\"#09110f\">\(escape(player.label))</text>"
+            }
+        } else {
+            for player in play.board.scene.teammates {
+                let location = projection.location(player.point)
+                let color = player.role == play.board.position ? "#c7f567" : "#75ccff"
+                svg += "<circle cx=\"\(number(location.x))\" cy=\"\(number(location.y))\" r=\"18\" fill=\"\(color)\"/>"
+                svg += "<text x=\"\(number(location.x))\" y=\"\(number(location.y + 4))\" text-anchor=\"middle\" font-family=\"sans-serif\" font-size=\"11\" fill=\"#09110f\">\(player.role.rawValue)</text>"
+            }
+            for player in play.board.scene.opponents {
+                let location = projection.location(player.point)
+                svg += "<circle cx=\"\(number(location.x))\" cy=\"\(number(location.y))\" r=\"15\" fill=\"#ac3945\"/>"
+                svg += "<text x=\"\(number(location.x))\" y=\"\(number(location.y + 4))\" text-anchor=\"middle\" font-family=\"sans-serif\" font-size=\"11\" fill=\"white\">\(player.role.rawValue)</text>"
+            }
         }
-        for player in play.board.scene.opponents {
-            let location = projection.location(player.point)
-            svg += "<circle cx=\"\(number(location.x))\" cy=\"\(number(location.y))\" r=\"15\" fill=\"#ac3945\"/>"
-            svg += "<text x=\"\(number(location.x))\" y=\"\(number(location.y + 4))\" text-anchor=\"middle\" font-family=\"sans-serif\" font-size=\"11\" fill=\"white\">\(player.role.rawValue)</text>"
-        }
-        let ball = projection.location(play.board.scene.ball)
+        let ball = projection.location(opening?.ball ?? play.board.scene.ball)
         svg += "<circle cx=\"\(number(ball.x))\" cy=\"\(number(ball.y))\" r=\"12\" fill=\"white\" stroke=\"#09110f\" stroke-width=\"3\"/></g>"
         let footer = header + 1160
         svg += "<g font-family=\"sans-serif\" font-size=\"12\" fill=\"#b9c9bf\"><text x=\"40\" y=\"\(number(footer + 20))\">Coaching notes\(play.notes.count > 240 ? " (excerpt; full notes in play file)" : "")</text>"

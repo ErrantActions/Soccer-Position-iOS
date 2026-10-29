@@ -66,6 +66,10 @@ struct CoachView: View {
         BoardSnapshot(scene: scene, position: position, comparison: comparison, comparing: comparing,
                       showHeat: showHeat, showGuides: showGuides, routes: routeDrawing.routes)
     }
+    private var presentation: BoardPresentation {
+        BoardPresentation(board: snapshot, advice: displayedAdvice, showPlayers: practice == nil && (aiPositioning || showSavedSetup),
+                          aiSuggested: acceptedPlan != nil, practice: practice, preview: routeDrawing.preview)
+    }
     private var displayedAdvice: [PlayerAdvice] {
         if let practice {
             return practice.revealed ? [PlayerAdvice(role: practice.role, point: practice.target.point, reason: practice.target.cue)] : []
@@ -83,11 +87,8 @@ struct CoachView: View {
 
     private var coachingBoard: some View {
         GeometryReader { proxy in
-            let division = activeDivision(proxy)
-            let duo = hasDuoDisplay(proxy)
-            let layout = CoachingLayout.resolve(
-                size: proxy.size, division: division, largeText: typeSize.isAccessibilitySize, duoDisplay: duo
-            )
+            let duo = proxy.hasDuoDisplay
+            let layout = proxy.coachingLayout(largeText: typeSize.isAccessibilitySize)
             ZStack(alignment: .topLeading) {
                 CoachPalette.ink.ignoresSafeArea()
                 RadialGradient(colors: [CoachPalette.lime.opacity(0.07), .clear], center: .topLeading, startRadius: 0, endRadius: 600)
@@ -130,6 +131,8 @@ struct CoachView: View {
         }
         .preferredColorScheme(.dark)
         .tint(CoachPalette.lime)
+        .background(ExternalFieldAccessory().allowsHitTesting(false))
+        .onChange(of: presentation, initial: true) { FieldPresentation.shared.board = presentation }
         .task { await playbook.load() }
         .sheet(isPresented: $showingPlaybook) {
             PlaybookView(store: playbook, current: snapshot, frames: frames, onLoad: loadPlay)
@@ -516,6 +519,7 @@ struct CoachView: View {
 
     private func coachingControls(includeRole: Bool = true, layout: CoachingLayout) -> some View {
         VStack(alignment: .leading, spacing: 18) {
+            PresenterControls()
             workbenchPanel
             practicePanel
             sequencePanel
@@ -1229,22 +1233,6 @@ struct CoachView: View {
             .foregroundStyle(CoachPalette.muted)
     }
 
-    private func activeDivision(_ geometry: GeometryProxy) -> CGRect? {
-        if #available(iOS 27.1, *) {
-            return geometry.reservedRegions(kind: .division, layoutDirectionBehavior: .fixed).first?.frame
-        }
-        return nil
-    }
-
-    private func hasDuoDisplay(_ geometry: GeometryProxy) -> Bool {
-        if #available(iOS 27.1, *) {
-            return !geometry.reservedRegions(
-                kind: .division, options: .includeInactive, layoutDirectionBehavior: .fixed
-            ).isEmpty
-        }
-        return false
-    }
-
     private func invalidateExplanation() {
         generation?.cancel()
         generation = nil
@@ -1280,6 +1268,23 @@ struct CoachView: View {
                 isGenerating = false
             }
         }
+    }
+}
+
+extension GeometryProxy {
+    var hasDuoDisplay: Bool {
+        if #available(iOS 27.1, *) {
+            return !reservedRegions(kind: .division, options: .includeInactive, layoutDirectionBehavior: .fixed).isEmpty
+        }
+        return false
+    }
+
+    func coachingLayout(largeText: Bool) -> CoachingLayout {
+        let division: CGRect?
+        if #available(iOS 27.1, *) {
+            division = reservedRegions(kind: .division, layoutDirectionBehavior: .fixed).first?.frame
+        } else { division = nil }
+        return CoachingLayout.resolve(size: size, division: division, largeText: largeText, duoDisplay: hasDuoDisplay)
     }
 }
 

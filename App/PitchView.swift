@@ -20,6 +20,7 @@ struct PitchView: View {
     let onMoveTarget: (SceneEditTarget, FieldPoint) -> Void
     let onEditingChanged: (Bool) -> Void
     let practice: PracticeRound?
+    var displayRoutes: [[FieldPoint]]? = nil
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorSchemeContrast) private var contrast
     @GestureState private var isDragging = false
@@ -53,7 +54,7 @@ struct PitchView: View {
                 RoundedRectangle(cornerRadius: 22)
                     .fill(CoachPalette.surface)
                 Canvas { context, size in
-                    drawField(context: &context, projection: projection)
+                    Self.drawField(context: &context, projection: projection, increasedContrast: contrast == .increased)
                     if showGuides {
                         var line = Path()
                         line.move(to: projection.location(ball))
@@ -63,7 +64,7 @@ struct PitchView: View {
                                        style: StrokeStyle(lineWidth: 1.4, dash: [4, 6]))
                     }
                     if practice == nil {
-                        for route in routeDrawing.routes + (routeDrawing.preview.isEmpty ? [] : [routeDrawing.preview]) {
+                        for route in displayRoutes ?? (routeDrawing.routes + (routeDrawing.preview.isEmpty ? [] : [routeDrawing.preview])) {
                             drawRoute(route, context: &context, projection: projection)
                         }
                     }
@@ -200,7 +201,7 @@ struct PitchView: View {
             .allowsHitTesting(false)
     }
 
-    private func drawField(context: inout GraphicsContext, projection: PitchProjection) {
+    static func drawField(context: inout GraphicsContext, projection: PitchProjection, increasedContrast: Bool) {
         guard projection.isUsable else { return }
         let field = projection.bounds
         context.fill(Path(field), with: .linearGradient(
@@ -236,7 +237,7 @@ struct PitchView: View {
             )
             context.fill(Path(ellipseIn: CGRect(x: spot.x - 2, y: spot.y - 2, width: 4, height: 4)), with: .color(.white.opacity(0.5)))
         }
-        context.stroke(lines, with: .color(.white.opacity(contrast == .increased ? 0.65 : 0.37)), lineWidth: 1.2)
+        context.stroke(lines, with: .color(.white.opacity(increasedContrast ? 0.65 : 0.37)), lineWidth: 1.2)
         context.fill(Path(ellipseIn: CGRect(x: center.x - 2, y: center.y - 2, width: 4, height: 4)), with: .color(.white.opacity(0.65)))
         for ownGoal in [true, false] {
             let depth: CGFloat = ownGoal ? 0 : PitchDimensions.length

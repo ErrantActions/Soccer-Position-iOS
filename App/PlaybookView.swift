@@ -31,6 +31,7 @@ struct PlaybookView: View {
     @State private var favoritesOnly = false
     @State private var importing = false
     @State private var editing: SavedPlay?
+    @State private var animating: SavedPlay?
     @State private var resetting = false
     @Environment(\.dismiss) private var dismiss
 
@@ -81,6 +82,15 @@ struct PlaybookView: View {
                             }
                     }
                 } header: { Text("Your playbook · \(store.plays.count)/100") }
+                Section("Animated tactical patterns") {
+                    ForEach(AnimatedPlayLibrary.plays.filter {
+                        search.isEmpty || $0.title.localizedCaseInsensitiveContains(search) ||
+                            $0.notes.localizedCaseInsensitiveContains(search) ||
+                            $0.animation?.category.localizedCaseInsensitiveContains(search) == true
+                    }) { row($0, example: true) }
+                    Text("Original animated illustrations researched from coaching references. Open a play for phases, sources and presenter controls; save a copy to favorite it.")
+                        .font(.caption).foregroundStyle(CoachPalette.muted)
+                }
                 Section("Example scenes") {
                     ForEach(SavedPlay.examples.filter {
                         search.isEmpty || $0.title.localizedCaseInsensitiveContains(search)
@@ -98,6 +108,7 @@ struct PlaybookView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
             .sheet(item: $editing) { PlayEditorView(store: store, initial: $0) }
+            .sheet(item: $animating) { AnimationPlayerView(play: $0) }
             .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { result in
                 switch result {
                 case .success(let url): Task { await store.importFile(url) }
@@ -117,26 +128,31 @@ struct PlaybookView: View {
         }
         .preferredColorScheme(.dark)
         .tint(CoachPalette.lime)
+        .background(ExternalFieldAccessory().allowsHitTesting(false))
         .task { await store.load() }
     }
 
     private func row(_ play: SavedPlay, example: Bool) -> some View {
         HStack(alignment: .center, spacing: 14) {
             Button {
-                onLoad(play)
-                dismiss()
+                open(play)
             } label: {
                 HStack(spacing: 14) {
-                    BoardThumbnail(board: play.board).frame(width: 75, height: 100)
+                    PlayThumbnail(play: play).frame(width: 75, height: 100)
                     VStack(alignment: .leading, spacing: 6) {
                         HStack(alignment: .firstTextBaseline, spacing: 5) {
                             if play.favorite { Image(systemName: "star.fill").foregroundStyle(CoachPalette.lime).font(.caption) }
                             Text(play.title).font(.headline).foregroundStyle(.white).lineLimit(2)
                         }
-                        Text("\(play.board.scene.formation.rawValue) · \(play.board.position.rawValue) · \(play.board.routes.count) routes")
-                            .font(.caption).foregroundStyle(CoachPalette.muted)
-                        Text(play.frames.isEmpty ? "Single scene" : "\(play.frames.count) sequence steps")
-                            .font(.caption2).foregroundStyle(CoachPalette.blue)
+                        if let clip = play.animation {
+                            Text("\(clip.category) · \(clip.frames.count) phases · \(Int(clip.duration)) seconds")
+                                .font(.caption).foregroundStyle(CoachPalette.blue)
+                        } else {
+                            Text("\(play.board.scene.formation.rawValue) · \(play.board.position.rawValue) · \(play.board.routes.count) routes")
+                                .font(.caption).foregroundStyle(CoachPalette.muted)
+                            Text(play.frames.isEmpty ? "Single scene" : "\(play.frames.count) sequence steps")
+                                .font(.caption2).foregroundStyle(CoachPalette.blue)
+                        }
                         if !play.notes.isEmpty {
                             Text(play.notes).font(.caption2).foregroundStyle(CoachPalette.muted).lineLimit(2)
                         }
@@ -145,9 +161,9 @@ struct PlaybookView: View {
                 }
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Load \(play.title)")
+            .accessibilityLabel("\(play.animation == nil ? "Load" : "Show animated play") \(play.title)")
             Menu {
-                Button("Load setup", systemImage: "play.rectangle") { onLoad(play); dismiss() }
+                Button(play.animation == nil ? "Load setup" : "Show animated play", systemImage: "play.rectangle") { open(play) }
                 if !example {
                     Button("Edit name and notes", systemImage: "square.and.pencil") { editing = play }
                     Button(play.favorite ? "Remove favorite" : "Favorite", systemImage: play.favorite ? "star.slash" : "star") {
@@ -178,6 +194,11 @@ struct PlaybookView: View {
         .padding(.vertical, 6)
         .listRowBackground(CoachPalette.surface)
     }
+
+    private func open(_ play: SavedPlay) {
+        if play.animation != nil { animating = play }
+        else { onLoad(play); dismiss() }
+    }
 }
 
 private struct PlayEditorView: View {
@@ -200,8 +221,10 @@ private struct PlayEditorView: View {
                 }
                 Section {
                     Toggle("Favorite", isOn: $play.favorite)
-                    BoardThumbnail(board: play.board).frame(height: 220).frame(maxWidth: .infinity)
-                    Text("\(play.frames.count) captured sequence steps. Stores editable positions and routes, not a live AI assessment.")
+                    PlayThumbnail(play: play).frame(height: 220).frame(maxWidth: .infinity)
+                    Text(play.animation == nil ?
+                         "\(play.frames.count) captured sequence steps. Stores editable positions and routes, not a live AI assessment." :
+                         "Keeps the full animation, phase cues and research links. Edit its name, notes and favorite status here.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 if let error = store.error { Section { Text(error).foregroundStyle(.orange) } }
@@ -221,6 +244,18 @@ private struct PlayEditorView: View {
             }
         }
         .preferredColorScheme(.dark).tint(CoachPalette.lime)
+        .background(ExternalFieldAccessory().allowsHitTesting(false))
+    }
+}
+
+struct PlayThumbnail: View {
+    let play: SavedPlay
+    var body: some View {
+        if let frame = play.animation?.frames.first {
+            AnimationPitchView(frame: frame)
+        } else {
+            BoardThumbnail(board: play.board)
+        }
     }
 }
 

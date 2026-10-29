@@ -165,8 +165,7 @@ enum AIPositionValidation {
     }
 
     private static func insideField(_ point: FieldPoint) -> Bool {
-        point.depth.isFinite && point.width.isFinite &&
-        (0...1).contains(point.depth) && (0...1).contains(point.width)
+        point.isInsideField
     }
 
     private static func distance(_ first: FieldPoint, _ second: FieldPoint) -> Double {

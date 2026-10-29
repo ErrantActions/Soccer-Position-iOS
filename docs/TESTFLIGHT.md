@@ -1,5 +1,38 @@
 # CoachAI publication and TestFlight runbook
 
+## Animated plays and external-display device checks
+
+The new starter library contains six original multi-player tactical animations
+with research links, continuous ball/player motion, phases, scrubbing, speed and
+loop controls. Saving/importing/exporting preserves animation content. Version-1
+playbooks remain compatible; animated version-2 files require this update.
+SVG exports explicitly show only the opening frame. No third-party diagrams,
+photos, videos or drill text are included. Reference sites are not contacted
+unless a user taps a link.
+
+External field presentation uses iOS 27's scene accessory registration, not a
+ReplayKit/FaceTime/Zoom broadcast. It requires a supported AirPlay or wired route;
+iOS 26 users see the version requirement and retain the existing app. No new
+capability, permission, signing entitlement or required-reason API is introduced.
+SDK compilation does not prove that a particular receiver presents the scene.
+
+On the phone, test:
+
+1. Open each animated pattern, play/pause, scrub, select phases, change speed and
+   loop; backgrounding must pause. Enable Reduce Motion and verify stepped motion.
+2. Save an animated copy, rename/favorite/add notes, relaunch and import its JSON.
+   The animation and references must remain; a shared SVG must say it is static.
+3. Use an Apple TV/compatible AirPlay route and a video-capable USB-C adapter
+   separately on iOS 27+. Verify the external scene actually connects and shows
+   the field, not controls, notes or research links. Blanking must make it black.
+4. With a display connected, move the live ball, draw/undo routes, analyze positions
+   and reveal a practice answer. Compare the audience field with the device field.
+5. Open/close the library, play viewer and notes editor without the display
+   reverting to a mirror of the controls. Disconnect/reconnect and switch apps.
+   Generic conferencing screen shares and system UI are outside this guarantee.
+6. Fold/unfold/rotate the Duo in the animation viewer and use large text. Preserve
+   real field proportions, hinge separation and native playback controls.
+
 ## Coaching workbench release: build 9
 
 Source commit `2ed42b7eb9842ecaaa3f0c4ecae0287c508c0761` passed
