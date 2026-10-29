@@ -18,6 +18,8 @@ struct AnimationDesignerView: View {
     @State private var discard = false
     @State private var removePlayer = false
     @State private var removePhase = false
+    @State private var replaceTeams = false
+    @State private var proposedSetup = TeamSetup(format: .seven, formation: .twoThreeOne)
     @State private var showPaths = true
     @State private var preview: SavedPlay?
     @State private var audienceOwner = UUID()
@@ -87,6 +89,11 @@ struct AnimationDesignerView: View {
         .confirmationDialog("Remove this phase and shorten the timeline?", isPresented: $removePhase, titleVisibility: .visible) {
             Button("Remove phase", role: .destructive) { edit { try $0.removePhase() } }
         }
+        .confirmationDialog("Replace all phases and players with this starting layout?", isPresented: $replaceTeams, titleVisibility: .visible) {
+            Button("Start over with this layout", role: .destructive) { edit { try $0.applyTeamSetup(proposedSetup) } }
+        } message: {
+            Text("Creates two starting phases on the selected reference pitch. Existing phases, roster and research references are replaced. Name and notes remain for you to review. Undo restores the previous play.")
+        }
         .onAppear(perform: load)
         .onDisappear { finishGesture(); FieldPresentation.shared.finishAnimation(owner: audienceOwner) }
         .onChange(of: preview?.id) { if preview == nil { publish() } }
@@ -111,9 +118,9 @@ struct AnimationDesignerView: View {
                 Button("Capture next phase", systemImage: "plus.rectangle.on.rectangle", action: capturePhase)
                     .disabled(!canInsert)
                 Button("Add lime player") { edit { try $0.addPlayer(team: .home) } }
-                    .disabled((draft?.frame.players.count ?? 22) >= 22)
+                    .disabled(draft?.canAddPlayer(team: .home) != true)
                 Button("Add red player") { edit { try $0.addPlayer(team: .away) } }
-                    .disabled((draft?.frame.players.count ?? 22) >= 22)
+                    .disabled(draft?.canAddPlayer(team: .away) != true)
                 Toggle("Movement guides", isOn: $showPaths)
             } label: { Label("Designer actions", systemImage: "ellipsis") }
             .disabled(draft == nil || busy)
@@ -124,7 +131,7 @@ struct AnimationDesignerView: View {
         if let draft {
             AnimationEditingPitch(
                 frame: draft.frame, previous: showPaths ? draft.previousFrame : nil,
-                phase: draft.phase, target: draft.target,
+                phase: draft.phase, target: draft.target, format: draft.animation.teamSetup?.format,
                 onBegin: beginGesture, onEnd: finishGesture,
                 onSelect: { select($0, gesture: true) },
                 onMove: { target, point in
@@ -147,6 +154,7 @@ struct AnimationDesignerView: View {
                     .font(.caption).foregroundStyle(CoachPalette.muted)
             }.coachCard()
             if let draft {
+                teamPanel(draft)
                 phasePanel(draft)
                 selectionPanel(draft)
                 metadataPanel
@@ -173,6 +181,26 @@ struct AnimationDesignerView: View {
     private var canInsert: Bool {
         guard let draft else { return false }
         return draft.animation.frames.count < 24 && draft.animation.duration <= 119.75
+    }
+
+    private func teamPanel(_ draft: AnimationDraft) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Label("Team size and starting shape", systemImage: "person.3").font(.headline)
+            if let setup = draft.animation.teamSetup {
+                Text("Current: \(setup.format.rawValue), originally \(setup.formation.rawValue)")
+                    .font(.subheadline).foregroundStyle(CoachPalette.blue)
+            } else {
+                Text("Current: freeform roster on the full-size reference pitch.")
+                    .font(.caption).foregroundStyle(CoachPalette.muted)
+            }
+            TeamSetupPicker(setup: $proposedSetup)
+            Button("Start over with this layout") { finishGesture(); replaceTeams = true }.frame(minHeight: 44)
+            if draft.animation.teamSetup != nil {
+                Button("Use freeform roster / full-size pitch") { edit { $0.detachTeamSetup() } }.frame(minHeight: 44)
+                Text("Keeps positions and phases but removes team-size limits and restores the 105 x 68 m reference.")
+                    .font(.caption2).foregroundStyle(CoachPalette.muted)
+            }
+        }.coachCard()
     }
 
     private func phasePanel(_ draft: AnimationDraft) -> some View {
@@ -232,6 +260,14 @@ struct AnimationDesignerView: View {
                 Text("Selected item left to right")
             }
             if draft.selectedPlayer != nil {
+                Picker("Player role", selection: Binding(
+                    get: { self.draft?.selectedPlayer?.role ?? .outfield },
+                    set: { role in edit { try $0.setSelectedRole(role) } })) {
+                    Text("Outfield").tag(AnimationRole.outfield)
+                    if draft.animation.teamSetup?.format.hasGoalkeeper != false {
+                        Text("Goalkeeper").tag(AnimationRole.goalkeeper)
+                    }
+                }.pickerStyle(.menu)
                 TextField("Player label", text: Binding(get: { self.draft?.selectedPlayer?.label ?? "" },
                                                        set: { text in edit { try $0.editSelectedLabel(text) } }))
                     .textFieldStyle(.roundedBorder).autocorrectionDisabled()
@@ -246,10 +282,12 @@ struct AnimationDesignerView: View {
             }
             Menu("Add a player", systemImage: "person.badge.plus") {
                 Button("Lime team") { edit { try $0.addPlayer(team: .home) } }
+                    .disabled(!draft.canAddPlayer(team: .home))
                 Button("Red team") { edit { try $0.addPlayer(team: .away) } }
+                    .disabled(!draft.canAddPlayer(team: .away))
             }
             .frame(minHeight: 44).disabled(draft.frame.players.count >= 22)
-            Text("\(draft.frame.players.count)/22 players. Roster and labels stay consistent across all phases.")
+            Text("\(draft.frame.rosterSummary) · \(draft.frame.players.count)/22 total. Roster and labels stay consistent across all phases.")
                 .font(.caption2).foregroundStyle(CoachPalette.muted)
         }.coachCard()
     }
@@ -305,6 +343,7 @@ struct AnimationDesignerView: View {
                 let draft = try AnimationDraft(animation)
                 self.draft = draft
                 baseline = draft.animation
+                if let setup = draft.animation.teamSetup { proposedSetup = setup }
             } catch { report(error) }
         }
         publish()
@@ -352,7 +391,7 @@ struct AnimationDesignerView: View {
     private func publish() {
         guard let frame = draft?.frame, preview == nil else { return }
         FieldPresentation.shared.beginAnimation(owner: audienceOwner)
-        FieldPresentation.shared.publish(frame, owner: audienceOwner)
+        FieldPresentation.shared.publish(frame, owner: audienceOwner, format: draft?.animation.teamSetup?.format)
     }
     private func showPreview() {
         finishGesture()
@@ -382,6 +421,7 @@ private struct AnimationEditingPitch: View {
     let previous: AnimationFrame?
     let phase: Int
     let target: AnimationEditTarget
+    let format: TeamFormat?
     let onBegin: () -> Void
     let onEnd: () -> Void
     let onSelect: (AnimationEditTarget) -> Void
@@ -398,10 +438,10 @@ private struct AnimationEditingPitch: View {
 
     var body: some View {
         GeometryReader { proxy in
-            let projection = PitchProjection(size: proxy.size, horizontal: proxy.size.width > proxy.size.height)
+            let projection = PitchProjection(size: proxy.size, horizontal: proxy.size.width > proxy.size.height, format: format)
             let bounds = proxy.frame(in: .global)
             let usable = projection.isUsable && min(proxy.size.width, proxy.size.height) >= 160
-            AnimationPitchView(frame: frame)
+            AnimationPitchView(frame: frame, format: format)
                 .overlay {
                     if usable {
                         Canvas { context, _ in
@@ -449,6 +489,7 @@ private struct AnimationEditingPitch: View {
                     })
                 .onChange(of: bounds) { invalidateGesture() }
                 .onChange(of: phase) { invalidateGesture() }
+                .onChange(of: format) { invalidateGesture() }
                 .onChange(of: frame.players.map(\.id)) { invalidateGesture() }
                 .onChange(of: target) { if let active, active.target != target { invalidateGesture() } }
                 .onChange(of: dragging) { if !dragging { finish(); rejectedGesture = false } }

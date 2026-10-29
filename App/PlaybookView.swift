@@ -33,6 +33,7 @@ struct PlaybookView: View {
     @State private var editing: SavedPlay?
     @State private var animating: SavedPlay?
     @State private var designing: SavedPlay?
+    @State private var showingYouthSetup = false
     @State private var resetting = false
     @Environment(\.dismiss) private var dismiss
 
@@ -59,6 +60,7 @@ struct PlaybookView: View {
                     }
                 }
                 Section {
+                    Button { showingYouthSetup = true } label: { Label("Kids & smaller teams", systemImage: "figure.child") }
                     Button {
                         do { designing = try AnimationDraft.newPlay(board: current) }
                         catch { store.report(error, prefix: "The designer could not be opened.") }
@@ -116,6 +118,7 @@ struct PlaybookView: View {
             .sheet(item: $editing) { PlayEditorView(store: store, initial: $0) }
             .sheet(item: $animating) { AnimationPlayerView(play: $0) }
             .sheet(item: $designing) { AnimationDesignerView(store: store, initial: $0) }
+            .sheet(isPresented: $showingYouthSetup) { YouthSetupView(store: store, board: current) }
             .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { result in
                 switch result {
                 case .success(let url): Task { await store.importFile(url) }
@@ -152,7 +155,7 @@ struct PlaybookView: View {
                             Text(play.title).font(.headline).foregroundStyle(.white).lineLimit(2)
                         }
                         if let clip = play.animation {
-                            Text("\(clip.category) · \(clip.frames.count) phases · \(Int(clip.duration)) seconds")
+                            Text("\(clip.teamSetup?.format.rawValue ?? clip.category) · \(clip.frames.count) phases · \(Int(clip.duration)) seconds")
                                 .font(.caption).foregroundStyle(CoachPalette.blue)
                         } else {
                             Text("\(play.board.scene.formation.rawValue) · \(play.board.position.rawValue) · \(play.board.routes.count) routes")
@@ -272,7 +275,7 @@ struct PlayThumbnail: View {
     let play: SavedPlay
     var body: some View {
         if let frame = play.animation?.frames.first {
-            AnimationPitchView(frame: frame)
+            AnimationPitchView(frame: frame, format: play.animation?.teamSetup?.format)
         } else {
             BoardThumbnail(board: play.board)
         }

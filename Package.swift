@@ -13,10 +13,12 @@ let package = Package(
                 "CoachAIApp.swift", "CoachView.swift", "PitchView.swift", "PositioningIntelligence.swift",
                 "PlaybookStore.swift", "PlaybookView.swift", "SpeechCoach.swift",
                 "FieldPresentation.swift", "AnimationPlayerView.swift", "AnimationDesignerView.swift",
+                "YouthSetupView.swift",
                 "Info.plist", "CoachAI.entitlements", "PrivacyInfo.xcprivacy",
             ],
             sources: ["Positioning.swift", "CoachingLayout.swift", "RouteDrawing.swift", "AIPositioning.swift",
-                      "Workbench.swift", "PlayDiagram.swift", "TacticalAnimation.swift", "AnimatedPlayLibrary.swift", "AnimationDraft.swift"]
+                      "Workbench.swift", "PlayDiagram.swift", "TacticalAnimation.swift", "AnimatedPlayLibrary.swift", "AnimationDraft.swift",
+                      "YouthSoccer.swift"]
         ),
         .testTarget(name: "CoachCoreTests", dependencies: ["CoachCore"], path: "Tests"),
     ]

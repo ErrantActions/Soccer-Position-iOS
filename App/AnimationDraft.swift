@@ -118,7 +118,7 @@ struct AnimationDraft: Equatable, Sendable {
     }
 
     mutating func addPlayer(team: AnimationTeam) throws {
-        guard frame.players.count < 22 else { throw WorkbenchError.invalid("A play supports up to 22 players.") }
+        guard canAddPlayer(team: team) else { throw WorkbenchError.invalid("This team or play has reached its player limit.") }
         let range = team == .home ? 1...99 : 101...199
         let ids = Set(frame.players.map(\.id))
         let labels = Set(frame.players.filter { $0.team == team }.map(\.label))
@@ -160,7 +160,7 @@ struct AnimationDraft: Equatable, Sendable {
                 throw WorkbenchError.invalid("The play's player roster is inconsistent.")
             }
             let old = animation.frames[index].players[playerIndex]
-            animation.frames[index].players[playerIndex] = AnimationPlayer(id: old.id, label: label, team: old.team, point: old.point)
+            animation.frames[index].players[playerIndex] = AnimationPlayer(id: old.id, label: label, team: old.team, point: old.point, role: old.role)
         }
         markEdited()
     }
@@ -180,6 +180,41 @@ struct AnimationDraft: Equatable, Sendable {
         end.cue = "Describe the next decision."
         return SavedPlay(title: "New animated play", board: board,
                          animation: TacticalAnimation(category: "Custom", frames: [start, end], references: [], origin: .userCreated))
+    }
+
+    func canAddPlayer(team: AnimationTeam) -> Bool {
+        let limit = animation.teamSetup?.format.playersPerTeam ?? 22
+        return frame.players.count < 22 && frame.players.filter { $0.team == team }.count < limit
+    }
+
+    mutating func applyTeamSetup(_ setup: TeamSetup) throws {
+        let next = try setup.animation()
+        let origin = animation.origin
+        animation = next
+        animation.origin = origin == .userCreated ? .userCreated : .adapted
+        phase = 0
+        target = .ball
+    }
+
+    mutating func detachTeamSetup() {
+        animation.teamSetup = nil
+        markEdited()
+    }
+
+    mutating func setSelectedRole(_ role: AnimationRole) throws {
+        guard let player = selectedPlayer else { throw WorkbenchError.invalid("Select a player first.") }
+        if role == .goalkeeper {
+            guard animation.teamSetup?.format.hasGoalkeeper != false,
+                  !frame.players.contains(where: { $0.team == player.team && $0.id != player.id && $0.role == .goalkeeper }) else {
+                throw WorkbenchError.invalid("This format does not allow another goalkeeper for this team.")
+            }
+        }
+        for index in animation.frames.indices {
+            if let indexOfPlayer = animation.frames[index].players.firstIndex(where: { $0.id == player.id }) {
+                animation.frames[index].players[indexOfPlayer].role = role
+            }
+        }
+        markEdited()
     }
 
     private mutating func markEdited() {

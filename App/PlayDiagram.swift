@@ -18,10 +18,11 @@ enum PlayDiagram {
         }
         let titles = lines(play.title, count: 32)
         let opening = play.animation?.frames.first
+        let format = play.animation?.teamSetup?.format
         let notes = lines(String(play.notes.prefix(240)), count: 50)
         let header = CGFloat(60 + titles.count * 28)
         let totalHeight = header + 1160 + CGFloat(notes.count * 18 + 85)
-        let projection = PitchProjection(size: CGSize(width: 760, height: 1160), horizontal: false)
+        let projection = PitchProjection(size: CGSize(width: 760, height: 1160), horizontal: false, format: format)
         let field = projection.bounds
         func point(_ point: FieldPoint) -> String {
             let location = projection.location(point)
@@ -40,24 +41,30 @@ enum PlayDiagram {
         }
         svg += """
         </g><text x="40" y="\(number(header - 10))" fill="#b9c9bf" font-family="sans-serif" font-size="12">
-        CoachAI - \(opening == nil ? escape(play.board.scene.formation.rawValue) + " - saved editable positions" : "animation opening frame - static diagram") - 105 x 68 m
+        CoachAI - \(opening == nil ? escape(play.board.scene.formation.rawValue) + " - saved editable positions" : "animation opening frame - static diagram") - \(format.map { "\($0.rawValue) - " } ?? "")\(Int(projection.fieldLength)) x \(Int(projection.fieldWidth)) m\(format == nil ? "" : " reference")
         </text><g transform="translate(20 \(number(header)))">
         <g fill="#124b37" stroke="#92b6a1" stroke-width="2">\(rectangle(field))</g>
         <g fill="none" stroke="#92b6a1" stroke-width="2">
-        <path d="M \(point(FieldPoint(depth: 0.5, width: 0))) L \(point(FieldPoint(depth: 0.5, width: 1)))"/>
-        <circle cx="\(number(field.midX))" cy="\(number(field.midY))" r="\(number(PitchDimensions.centerCircleRadius * projection.metersToPoints))"/>
         """
-        for own in [true, false] {
-            for (depth, width) in [(PitchDimensions.penaltyAreaDepth, PitchDimensions.penaltyAreaWidth),
-                                   (PitchDimensions.goalAreaDepth, PitchDimensions.goalAreaWidth)] {
-                let depthRange: ClosedRange<CGFloat> = own ? 0...depth : (PitchDimensions.length - depth)...PitchDimensions.length
-                svg += rectangle(projection.meterRectangle(depth: depthRange, width: ((PitchDimensions.width - width) / 2)...((PitchDimensions.width + width) / 2)))
+        if format != .three {
+            svg += "<path d=\"M \(point(FieldPoint(depth: 0.5, width: 0))) L \(point(FieldPoint(depth: 0.5, width: 1)))\"/>"
+        }
+        if projection.fullSizeMarkings {
+            svg += "<circle cx=\"\(number(field.midX))\" cy=\"\(number(field.midY))\" r=\"\(number(PitchDimensions.centerCircleRadius * projection.metersToPoints))\"/>"
+            for own in [true, false] {
+                for (depth, width) in [(PitchDimensions.penaltyAreaDepth, PitchDimensions.penaltyAreaWidth),
+                                       (PitchDimensions.goalAreaDepth, PitchDimensions.goalAreaWidth)] {
+                    let depthRange: ClosedRange<CGFloat> = own ? 0...depth : (PitchDimensions.length - depth)...PitchDimensions.length
+                    svg += rectangle(projection.meterRectangle(depth: depthRange, width: ((PitchDimensions.width - width) / 2)...((PitchDimensions.width + width) / 2)))
+                }
+                let spot = projection.meterLocation(depth: own ? PitchDimensions.penaltySpotDistance : PitchDimensions.length - PitchDimensions.penaltySpotDistance,
+                                                   width: PitchDimensions.width / 2)
+                svg += "<circle data-mark=\"penalty-spot\" cx=\"\(number(spot.x))\" cy=\"\(number(spot.y))\" r=\"2\" fill=\"#92b6a1\"/>"
             }
-            let spot = projection.meterLocation(depth: own ? PitchDimensions.penaltySpotDistance : PitchDimensions.length - PitchDimensions.penaltySpotDistance,
-                                               width: PitchDimensions.width / 2)
-            svg += "<circle data-mark=\"penalty-spot\" cx=\"\(number(spot.x))\" cy=\"\(number(spot.y))\" r=\"2\" fill=\"#92b6a1\"/>"
-            let start = projection.meterLocation(depth: own ? 0 : PitchDimensions.length, width: (PitchDimensions.width - PitchDimensions.goalWidth) / 2)
-            let end = projection.meterLocation(depth: own ? 0 : PitchDimensions.length, width: (PitchDimensions.width + PitchDimensions.goalWidth) / 2)
+        }
+        for own in [true, false] {
+            let start = projection.meterLocation(depth: own ? 0 : projection.fieldLength, width: (projection.fieldWidth - projection.goalWidth) / 2)
+            let end = projection.meterLocation(depth: own ? 0 : projection.fieldLength, width: (projection.fieldWidth + projection.goalWidth) / 2)
             svg += "<path data-mark=\"goal\" d=\"M \(number(start.x)),\(number(start.y)) L \(number(end.x)),\(number(end.y))\" stroke-width=\"4\"/>"
         }
         svg += "<circle cx=\"\(number(field.midX))\" cy=\"\(number(field.midY))\" r=\"2\" fill=\"#92b6a1\"/>"
@@ -84,6 +91,9 @@ enum PlayDiagram {
                 let location = projection.location(player.point)
                 let color = player.team == .home ? "#c7f567" : "#ac3945"
                 svg += "<circle cx=\"\(number(location.x))\" cy=\"\(number(location.y))\" r=\"18\" fill=\"\(color)\"/>"
+                if player.role == .goalkeeper {
+                    svg += "<circle data-mark=\"goalkeeper\" cx=\"\(number(location.x))\" cy=\"\(number(location.y))\" r=\"14\" fill=\"none\" stroke=\"white\"/>"
+                }
                 svg += "<text x=\"\(number(location.x))\" y=\"\(number(location.y + 4))\" text-anchor=\"middle\" font-family=\"sans-serif\" font-size=\"11\" fill=\"#09110f\">\(escape(player.label))</text>"
             }
         } else {

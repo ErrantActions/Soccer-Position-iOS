@@ -32,6 +32,7 @@ struct CoachView: View {
     @State private var playbook = PlaybookStore()
     @State private var speech = SpeechCoach()
     @State private var showingPlaybook = false
+    @State private var showingYouthSetup = false
     @State private var frames: [PlayFrame] = []
     @State private var selectedStep = 0
     @State private var isPlaying = false
@@ -137,6 +138,7 @@ struct CoachView: View {
         .sheet(isPresented: $showingPlaybook) {
             PlaybookView(store: playbook, current: snapshot, frames: frames, onLoad: loadPlay)
         }
+        .sheet(isPresented: $showingYouthSetup) { YouthSetupView(store: playbook, board: snapshot) }
         .onChange(of: scene) {
             guard !isPlaying else { return }
             routeDrawing.cancelStroke()
@@ -226,6 +228,7 @@ struct CoachView: View {
 
             Menu {
                 Button("Open playbook", systemImage: "books.vertical", action: openPlaybook)
+                Button("Kids & smaller teams", systemImage: "figure.child", action: openYouthSetup)
                 Button("Save current setup", systemImage: "bookmark", action: quickSave)
                     .disabled(playbook.busy || !playbook.loaded || !playbook.writable || practice != nil || isPlaying)
                 Button("Capture sequence step", systemImage: "plus.rectangle.on.rectangle", action: captureStep)
@@ -520,6 +523,7 @@ struct CoachView: View {
     private func coachingControls(includeRole: Bool = true, layout: CoachingLayout) -> some View {
         VStack(alignment: .leading, spacing: 18) {
             PresenterControls()
+            youthPanel
             workbenchPanel
             practicePanel
             sequencePanel
@@ -611,6 +615,23 @@ struct CoachView: View {
         Button(action: toggleSequence) {
             Label(isPlaying ? "Pause" : "Play", systemImage: isPlaying ? "pause.fill" : "play.fill").frame(minHeight: 44)
         }.disabled(frames.count < 2)
+    }
+
+    private var youthPanel: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Kids & smaller teams", systemImage: "figure.child").font(.headline)
+            Text("3v3, 4v4, 5v5, 7v7 and 9v9 starting shapes, smaller reference pitches and editable full teams.")
+                .font(.caption).foregroundStyle(CoachPalette.muted)
+            Button("Choose team size", systemImage: "person.3", action: openYouthSetup).frame(minHeight: 44)
+            Text("The main instant/AI guide remains a five-role defensive teaching unit on a full-size pitch; use the youth board for smaller teams.")
+                .font(.caption2).foregroundStyle(CoachPalette.muted)
+        }.coachCard()
+    }
+
+    private func openYouthSetup() {
+        pauseSequence()
+        speech.stop()
+        showingYouthSetup = true
     }
 
     private var workbenchPanel: some View {

@@ -1,5 +1,33 @@
 # CoachAI publication and TestFlight runbook
 
+## Youth formats device checks
+
+Kids & smaller teams adds 3v3/4v4 without goalkeepers and 5v5/7v7/9v9 with
+keeper-inclusive rosters, plus a full-size 11v11 option. Research and country/
+season caveats are in the README and source links. These are editable original
+starting layouts, not rigid positions, league enforcement or child-specific AI.
+No child identity, birth date or new permission is collected.
+
+Check on the device:
+
+- Open the youth setup from the main panel, native More and Playbook. Try every
+  format/formation and count both teams, including keepers.
+- Preview the smaller pitch, design phases, rename/remove/add players and keepers,
+  save/relaunch, import/export JSON and view the opening-frame SVG. Dimensions and
+  keeper roles must survive every surface, including an external display.
+- Verify per-team caps, no keepers in 3v3/4v4, one keeper maximum otherwise, and
+  smaller/uneven training groups. The displayed roster count must match the field.
+- Confirm resetting an existing animation warns before replacing phases/players;
+  Undo restores it. Freeform mode keeps phases but restores the full-size field.
+- Fold/rotate/resize during editing, use VoiceOver and large text, return from
+  preview and test compatible AirPlay/wired presentation on iOS 27+.
+
+Youth files use schema 3 to prevent older apps silently rendering full-size
+geometry or dropping keeper roles. Existing schema-1/2 libraries remain readable.
+The full-size five-role AI guide/practice are separate and labeled accordingly.
+Youth field markings intentionally omit legal boxes, retreat/build-out lines and
+offside simulation; check the actual league's rules and pitch dimensions.
+
 ## Custom designer and ten-play catalog release: build 11
 
 Source commit `0aa4281ed323d0f903b9219abebaa9043100e688` passed **147 portable

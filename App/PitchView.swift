@@ -216,34 +216,38 @@ struct PitchView: View {
         }
         var lines = Path()
         lines.addRect(field)
-        lines.move(to: projection.location(FieldPoint(depth: 0.5, width: 0)))
-        lines.addLine(to: projection.location(FieldPoint(depth: 0.5, width: 1)))
+        if projection.format != .three {
+            lines.move(to: projection.location(FieldPoint(depth: 0.5, width: 0)))
+            lines.addLine(to: projection.location(FieldPoint(depth: 0.5, width: 1)))
+        }
         let center = projection.location(FieldPoint(depth: 0.5, width: 0.5))
-        let radius = PitchDimensions.centerCircleRadius * projection.metersToPoints
-        lines.addEllipse(in: CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2))
-        for ownGoal in [true, false] {
-            for (boxDepth, boxWidth) in [
-                (PitchDimensions.penaltyAreaDepth, PitchDimensions.penaltyAreaWidth),
-                (PitchDimensions.goalAreaDepth, PitchDimensions.goalAreaWidth),
-            ] {
-                let depth: ClosedRange<CGFloat> = ownGoal ? (0...boxDepth) :
-                    ((PitchDimensions.length - boxDepth)...PitchDimensions.length)
-                let width = ((PitchDimensions.width - boxWidth) / 2)...((PitchDimensions.width + boxWidth) / 2)
-                lines.addRect(projection.meterRectangle(depth: depth, width: width))
+        if projection.fullSizeMarkings {
+            let radius = PitchDimensions.centerCircleRadius * projection.metersToPoints
+            lines.addEllipse(in: CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2))
+            for ownGoal in [true, false] {
+                for (boxDepth, boxWidth) in [
+                    (PitchDimensions.penaltyAreaDepth, PitchDimensions.penaltyAreaWidth),
+                    (PitchDimensions.goalAreaDepth, PitchDimensions.goalAreaWidth),
+                ] {
+                    let depth: ClosedRange<CGFloat> = ownGoal ? (0...boxDepth) :
+                        ((PitchDimensions.length - boxDepth)...PitchDimensions.length)
+                    let width = ((PitchDimensions.width - boxWidth) / 2)...((PitchDimensions.width + boxWidth) / 2)
+                    lines.addRect(projection.meterRectangle(depth: depth, width: width))
+                }
+                let spot = projection.meterLocation(
+                    depth: ownGoal ? PitchDimensions.penaltySpotDistance : PitchDimensions.length - PitchDimensions.penaltySpotDistance,
+                    width: PitchDimensions.width / 2
+                )
+                context.fill(Path(ellipseIn: CGRect(x: spot.x - 2, y: spot.y - 2, width: 4, height: 4)), with: .color(.white.opacity(0.5)))
             }
-            let spot = projection.meterLocation(
-                depth: ownGoal ? PitchDimensions.penaltySpotDistance : PitchDimensions.length - PitchDimensions.penaltySpotDistance,
-                width: PitchDimensions.width / 2
-            )
-            context.fill(Path(ellipseIn: CGRect(x: spot.x - 2, y: spot.y - 2, width: 4, height: 4)), with: .color(.white.opacity(0.5)))
         }
         context.stroke(lines, with: .color(.white.opacity(increasedContrast ? 0.65 : 0.37)), lineWidth: 1.2)
         context.fill(Path(ellipseIn: CGRect(x: center.x - 2, y: center.y - 2, width: 4, height: 4)), with: .color(.white.opacity(0.65)))
         for ownGoal in [true, false] {
-            let depth: CGFloat = ownGoal ? 0 : PitchDimensions.length
+            let depth: CGFloat = ownGoal ? 0 : projection.fieldLength
             var goal = Path()
-            goal.move(to: projection.meterLocation(depth: depth, width: (PitchDimensions.width - PitchDimensions.goalWidth) / 2))
-            goal.addLine(to: projection.meterLocation(depth: depth, width: (PitchDimensions.width + PitchDimensions.goalWidth) / 2))
+            goal.move(to: projection.meterLocation(depth: depth, width: (projection.fieldWidth - projection.goalWidth) / 2))
+            goal.addLine(to: projection.meterLocation(depth: depth, width: (projection.fieldWidth + projection.goalWidth) / 2))
             context.stroke(goal, with: .color(ownGoal ? CoachPalette.lime : .white.opacity(0.7)), lineWidth: 4)
         }
     }

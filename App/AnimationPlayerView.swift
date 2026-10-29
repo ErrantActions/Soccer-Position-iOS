@@ -84,7 +84,7 @@ final class AnimationPlayback {
 
     private func publish(_ frame: AnimationFrame) {
         self.frame = frame
-        FieldPresentation.shared.publish(frame, owner: owner)
+        FieldPresentation.shared.publish(frame, owner: owner, format: clip?.teamSetup?.format)
     }
     private func report(_ problem: Error) {
         pause()
@@ -166,7 +166,7 @@ struct AnimationPlayerView: View {
 
     @ViewBuilder private var field: some View {
         if let frame = playback.frame {
-            AnimationPitchView(frame: frame)
+            AnimationPitchView(frame: frame, format: playback.clip?.teamSetup?.format)
         } else {
             ContentUnavailableView("Animated field unavailable", systemImage: "exclamationmark.triangle")
         }
@@ -179,6 +179,13 @@ struct AnimationPlayerView: View {
             Text(play.title).font(.system(.title2, design: .rounded, weight: .bold))
             Text(playback.frame?.cue ?? "Preparing the field...").font(.headline).fixedSize(horizontal: false, vertical: true)
             if let clip = playback.clip {
+                if let setup = clip.teamSetup {
+                    Text("\(setup.format.rawValue) · starting shape \(setup.formation.rawValue) · \(Int(setup.format.fieldLength)) x \(Int(setup.format.fieldWidth)) m reference")
+                        .font(.subheadline).foregroundStyle(CoachPalette.blue)
+                    Text(setup.format.layoutNote + " " + setup.format.pitchNote)
+                        .font(.caption).foregroundStyle(CoachPalette.muted)
+                    Text(playback.frame?.rosterSummary ?? "").font(.caption).foregroundStyle(CoachPalette.blue)
+                }
                 HStack(spacing: 16) {
                     Button { playback.seek(to: 0, reducedMotion: reduceMotion) } label: { Image(systemName: "backward.end.fill").frame(width: 44, height: 44) }
                         .accessibilityLabel("Restart animated play")
@@ -272,6 +279,7 @@ struct AnimationPlayerView: View {
 struct AnimationPitchView: View {
     let frame: AnimationFrame
     var audience = false
+    var format: TeamFormat? = nil
     @Environment(\.colorSchemeContrast) private var contrast
 
     var body: some View {
@@ -284,7 +292,7 @@ struct AnimationPitchView: View {
                     context.translateBy(x: (size.width - canvas.width * scale) / 2, y: (size.height - canvas.height * scale) / 2)
                     context.scaleBy(x: scale, y: scale)
                 }
-                let projection = PitchProjection(size: canvas, horizontal: canvas.width > canvas.height)
+                let projection = PitchProjection(size: canvas, horizontal: canvas.width > canvas.height, format: format)
                 PitchView.drawField(context: &context, projection: projection, increasedContrast: contrast == .increased)
                 for player in frame.players {
                     let point = projection.location(player.point)
@@ -294,6 +302,9 @@ struct AnimationPitchView: View {
                     let marker = player.team == .home ? Path(ellipseIn: bounds) : Path(roundedRect: bounds, cornerRadius: radius * 0.35)
                     context.fill(marker, with: .color(color))
                     context.stroke(marker, with: .color(.white.opacity(0.65)), lineWidth: 1.5)
+                    if player.role == .goalkeeper {
+                        context.stroke(Path(ellipseIn: bounds.insetBy(dx: 3, dy: 3)), with: .color(.white.opacity(0.8)), lineWidth: 1)
+                    }
                     context.draw(Text(player.label).font(.system(size: radius * 0.85, weight: .heavy))
                         .foregroundStyle(player.team == .home ? CoachPalette.ink : .white), at: point)
                 }

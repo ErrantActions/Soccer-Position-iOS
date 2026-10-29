@@ -85,6 +85,10 @@ Apple's store name "CoachAI" was unavailable; the on-device display name remains
   players and the ball, capture/remove phases, adjust travel time, assign ball
   passes, edit phase cues and player labels, manage the roster and preview motion.
   Bounded undo/redo and explicit unsaved-change protection preserve editing work.
+- **Kids & smaller teams** sets up 3v3, 4v4, 5v5, 7v7 or 9v9 (plus full-size
+  11v11) with two starting shapes per format, complete opposing teams, appropriate
+  goalkeeper counts and smaller reference pitches. Team limits, keeper roles,
+  geometry, saved plays, SVG diagrams and external presentation share the setup.
 - On **iOS 27+**, field-only external presentation uses Apple's scene-accessory API
   with supported AirPlay or wired displays. Ball, players, routes, AI suggestions,
   practice reveals and animated plays appear without the device's control panels
@@ -167,12 +171,73 @@ not proof of ownership. Old animations without it are explicitly marked
 unspecified. Custom authoring and reference-free animations require build 11+;
 existing version-1 and version-2 playbooks continue to load in the new app.
 
-Animated JSON files use schema version 2 and preserve player motion, phases,
+Ordinary animated JSON files use schema version 2 and preserve player motion, phases,
 notes and references. Existing version-1 scenes and libraries still load.
 Older app versions reject animated version-2 files rather than show a misleading
 static scene. SVG sharing exports the animation's **opening frame only** and
 labels it as static. Animated clips support 2–22 players, 2–24 phases and up to
 120 seconds. Ordinary editable-board sequences remain a separate format.
+
+## Kids and small-sided teams
+
+Open **Kids & smaller teams** in the main panel, native More menu or Playbook.
+Choose a format and starting shape, then **Design this play** to move players,
+make passes, capture phases, preview and save. No child name, birth date, account
+or internet connection is required. Shapes are illustrative starting positions,
+not rigid assignments or a recommendation to specialize young children early.
+Rotate roles and prioritize enjoyment, equal involvement and decision-making.
+
+| Format | Outfield starting shapes | Goalkeepers | Reference pitch |
+|---|---|---|---|
+| 3v3 | 2-1, 1-2 | None | 15 x 10 m |
+| 4v4 | 1-2-1, 2-2 | None | 27 x 18 m illustration |
+| 5v5 | 1-2-1, 2-2 | One per full team | 37 x 27 m |
+| 7v7 | 2-3-1, 3-2-1 | One per full team | 55 x 37 m |
+| 9v9 | 3-3-2, 4-3-1 | One per full team | 73 x 46 m |
+| 11v11 | 4-3-3, 4-4-2 | One per full team | Existing 105 x 68 m reference |
+
+Formation numbers **exclude the goalkeeper**. For example, 2-3-1 plus one keeper
+is seven players, not eight. The 5v5/7v7/9v9 choices match examples described in
+England Football coaching guidance; 3v3/4v4 arrangements are simple original
+triangle/diamond/two-line illustrations. Source diagrams are not copied.
+
+Rules vary by country, season and league. England's 2026-27 pathway uses U7 3v3,
+U8-U9 5v5, U10-U11 7v7, U12-U13 9v9 and U14+ 11v11. U.S. programs commonly use
+4v4, 7v7 and 9v9 at different ages. The app does not infer a child's age or impose
+one country's pathway. Confirm the actual league format and measurements.
+The 3v3/5v5/7v7/9v9 pitch references use England Football guidance; 4v4 is labeled
+as an illustration. The full-size 11v11 reference is not an age-specific youth
+recommendation; younger 11v11 pitches may be smaller.
+
+Youth pitches keep their real aspect ratio and correct goal widths rather than
+shrinking player count on a full-size field. Youth markings are intentionally
+simplified: regulation boxes, retreat/build-out lines, heading and offside rules
+are **not simulated**. U.S. 7v7 build-out requirements and England's retreat-line
+rules are not interchangeable. This is a coaching board, not a referee tool.
+
+In the designer, **Start over with this layout** explicitly confirms replacement
+of all phases/roster/references, while keeping the name and notes for review.
+Undo restores the previous animation. The format limits the maximum players per
+team, but allows smaller/uneven training groups; current roster counts are shown.
+Keepers have a double ring and a separate role. 3v3/4v4 reject keeper roles;
+other formats allow at most one per team. **Freeform roster / full-size pitch**
+preserves positions/phases while removing the format limit and restoring 105 x 68 m.
+
+Youth layouts and keeper metadata export as **schema version 3**, so older apps
+reject them instead of silently showing the wrong field or dropping keeper roles.
+Versions 1 and 2 still load unchanged. The main instant/Apple Intelligence position
+guide and practice mode remain explicitly scoped to the existing five-role
+defensive unit on the full-size pitch; they do not generate youth-format advice.
+
+Research references (checked October 2026):
+
+- [U.S. Soccer small-sided development standards](https://www.ussoccer.com/stories/2017/08/five-things-to-know-how-smallsided-standards-will-change-youth-soccer)
+- [England Football FutureFit 2026-27 pathway](https://www.englandfootball.com/articles/2025/Feb/21/Future-Fit-grassroots-youth-football-england-update-20252102)
+- [U7 3v3 reference dimensions](https://www.englandfootball.com/play/youth-football/Youth-Club-Football/U7)
+- [5v5 dimensions, keepers and formations](https://learn.englandfootball.com/articles-and-resources/coaching/resources/2025/How-to-play-and-manage-5v5-games)
+- [7v7 dimensions, keepers and formations](https://learn.englandfootball.com/articles-and-resources/coaching/resources/2025/How-to-play-and-manage-7v7-games)
+- [9v9 dimensions, keepers and formations](https://learn.englandfootball.com/articles-and-resources/coaching/resources/2025/How-to-play-and-manage-9v9-games)
+- [11v11 youth-size variations](https://learn.englandfootball.com/articles-and-resources/coaching/resources/2025/How-to-play-and-manage-11v11-games)
 
 For presentation, connect a supported AirPlay display through Control Center, or
 use a video-capable wired adapter, then return to CoachAI. Keep the controller app

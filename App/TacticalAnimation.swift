@@ -13,6 +13,7 @@ struct AnimationPlayer: Codable, Equatable, Identifiable, Sendable {
     let label: String
     let team: AnimationTeam
     var point: FieldPoint
+    var role: AnimationRole?
 }
 
 struct AnimationFrame: Codable, Equatable, Sendable {
@@ -20,6 +21,10 @@ struct AnimationFrame: Codable, Equatable, Sendable {
     var ball: FieldPoint
     var players: [AnimationPlayer]
     var cue: String
+
+    var rosterSummary: String {
+        "Lime \(players.filter { $0.team == .home }.count) - Red \(players.filter { $0.team == .away }.count)"
+    }
 }
 
 struct PlayReference: Codable, Equatable, Sendable {
@@ -32,10 +37,14 @@ struct TacticalAnimation: Codable, Equatable, Sendable {
     var frames: [AnimationFrame]
     var references: [PlayReference]
     var origin: AnimationOrigin?
+    var teamSetup: TeamSetup?
+
+    var needsYouthSchema: Bool { teamSetup != nil || frames.contains { $0.players.contains { $0.role != nil } } }
 
     var duration: Double { frames.last?.time ?? 0 }
 
     func validate() throws {
+        try teamSetup?.validate()
         guard (2...24).contains(frames.count), frames.first?.time == 0,
               duration.isFinite, (0.25...120).contains(duration) else {
             throw WorkbenchError.invalid("An animated play needs 2 to 24 frames, starting at zero and ending within 120 seconds.")
@@ -59,6 +68,15 @@ struct TacticalAnimation: Codable, Equatable, Sendable {
         let identities = Set(initial.map(\.id))
         var previousTime = -0.25
         for frame in frames {
+            if let setup = teamSetup {
+                for team in [AnimationTeam.home, .away] {
+                    let players = frame.players.filter { $0.team == team }
+                    guard players.count <= setup.format.playersPerTeam,
+                          players.filter({ $0.role == .goalkeeper }).count <= (setup.format.hasGoalkeeper ? 1 : 0) else {
+                        throw WorkbenchError.invalid("The roster or goalkeeper count exceeds the selected team format.")
+                    }
+                }
+            }
             guard frame.time.isFinite, frame.time - previousTime >= 0.25 - 1e-9,
                   frame.ball.isInsideField, !frame.cue.isEmpty, frame.cue.count <= 400, PlayText.isSafe(frame.cue),
                   frame.players.count == initial.count, Set(frame.players.map(\.id)) == identities else {
@@ -73,7 +91,7 @@ struct TacticalAnimation: Codable, Equatable, Sendable {
                       !player.label.contains("\n"), !player.label.contains("\r"),
                       PlayText.isSafe(player.label), player.point.isInsideField,
                       let original = initial.first(where: { $0.id == player.id }),
-                      original.label == player.label, original.team == player.team else {
+                      original.label == player.label, original.team == player.team, original.role == player.role else {
                     throw WorkbenchError.invalid("Animation players need stable labels, teams and valid field coordinates.")
                 }
             }

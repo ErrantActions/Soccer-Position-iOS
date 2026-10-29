@@ -17,6 +17,7 @@ final class FieldPresentation {
     static let shared = FieldPresentation()
     var board: BoardPresentation?
     private(set) var animation: AnimationFrame?
+    private(set) var animationFormat: TeamFormat?
     private(set) var animationOwner: UUID?
     var blanked = false
     private var sessions: Set<String> = []
@@ -27,13 +28,15 @@ final class FieldPresentation {
     func beginAnimation(owner: UUID) {
         animationOwner = owner
     }
-    func publish(_ frame: AnimationFrame, owner: UUID) {
+    func publish(_ frame: AnimationFrame, owner: UUID, format: TeamFormat? = nil) {
         guard animationOwner == owner else { return }
         animation = frame
+        animationFormat = format
     }
     func finishAnimation(owner: UUID) {
         guard animationOwner == owner else { return }
         animation = nil
+        animationFormat = nil
         animationOwner = nil
     }
 }
@@ -113,7 +116,7 @@ private struct ExternalFieldView: View {
                 Color.black
                 if !display.blanked {
                     if let frame = display.animation {
-                        AnimationPitchView(frame: frame, audience: true)
+                        AnimationPitchView(frame: frame, audience: true, format: display.animationFormat)
                     } else if let content = display.board {
                         board(content, horizontal: proxy.size.width > proxy.size.height)
                     } else {

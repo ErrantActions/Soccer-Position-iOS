@@ -103,7 +103,7 @@ enum PlayCodec {
     }
     static func document(_ play: SavedPlay) throws -> Data {
         try play.validate()
-        let data = try encoder().encode(Document(version: play.animation == nil ? 1 : 2, play: play))
+        let data = try encoder().encode(Document(version: schemaVersion(play), play: play))
         guard data.count <= maximumDocumentBytes else {
             throw WorkbenchError.invalid("This play is larger than the 2 MB share/import limit. Reduce its steps or routes.")
         }
@@ -112,7 +112,7 @@ enum PlayCodec {
     static func importDocument(_ data: Data) throws -> SavedPlay {
         guard data.count <= maximumDocumentBytes else { throw WorkbenchError.invalid("The play file exceeds 2 MB.") }
         let document = try decoder().decode(Document.self, from: data)
-        guard [1, 2].contains(document.version), document.version == 2 || document.play.animation == nil else {
+        guard [1, 2, 3].contains(document.version), document.version >= schemaVersion(document.play) else {
             throw WorkbenchError.invalid("This play file uses an unsupported version.")
         }
         try document.play.validate()
@@ -123,14 +123,14 @@ enum PlayCodec {
             throw WorkbenchError.invalid("The local playbook supports up to 100 uniquely identified plays.")
         }
         for play in plays { _ = try document(play) }
-        let data = try encoder().encode(Library(version: plays.contains { $0.animation != nil } ? 2 : 1, plays: plays))
+        let data = try encoder().encode(Library(version: plays.map(schemaVersion).max() ?? 1, plays: plays))
         guard data.count <= maximumLibraryBytes else { throw WorkbenchError.invalid("The local playbook exceeds 20 MB.") }
         return data
     }
     static func readLibrary(_ data: Data) throws -> [SavedPlay] {
         guard data.count <= maximumLibraryBytes else { throw WorkbenchError.invalid("The local playbook exceeds 20 MB.") }
         let library = try decoder().decode(Library.self, from: data)
-        guard [1, 2].contains(library.version), library.version == 2 || library.plays.allSatisfy({ $0.animation == nil }) else {
+        guard [1, 2, 3].contains(library.version), library.plays.allSatisfy({ schemaVersion($0) <= library.version }) else {
             throw WorkbenchError.invalid("The playbook uses an unsupported version.")
         }
         _ = try self.library(library.plays)
@@ -140,6 +140,11 @@ enum PlayCodec {
         let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-_ "))
         let cleaned = String(title.unicodeScalars.map { allowed.contains($0) ? Character(String($0)) : "_" }).trimmingCharacters(in: .whitespaces)
         return cleaned.isEmpty ? "CoachAI Play" : String(cleaned.prefix(80))
+    }
+
+    private static func schemaVersion(_ play: SavedPlay) -> Int {
+        guard let animation = play.animation else { return 1 }
+        return animation.needsYouthSchema ? 3 : 2
     }
 }
 

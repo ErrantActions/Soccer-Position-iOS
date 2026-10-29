@@ -98,15 +98,17 @@ enum PitchDimensions {
     static let penaltySpotDistance: CGFloat = 11
     static let canvasInset: CGFloat = 26
 
-    static func aspectRatio(horizontal: Bool) -> CGFloat {
-        horizontal ? length / width : width / length
+    static func aspectRatio(horizontal: Bool, format: TeamFormat? = nil) -> CGFloat {
+        let length = format?.fieldLength ?? PitchDimensions.length
+        let width = format?.fieldWidth ?? PitchDimensions.width
+        return horizontal ? length / width : width / length
     }
 
-    static func fittedPlayingSize(in available: CGSize, horizontal: Bool) -> CGSize {
+    static func fittedPlayingSize(in available: CGSize, horizontal: Bool, format: TeamFormat? = nil) -> CGSize {
         let availableWidth = max(0, available.width)
         let availableHeight = max(0, available.height)
         guard availableWidth > 0, availableHeight > 0 else { return .zero }
-        let ratio = aspectRatio(horizontal: horizontal)
+        let ratio = aspectRatio(horizontal: horizontal, format: format)
         let fittedWidth = min(availableWidth, availableHeight * ratio)
         return CGSize(width: fittedWidth, height: fittedWidth / ratio)
     }
@@ -130,22 +132,28 @@ enum PitchDimensions {
 struct PitchProjection {
     let bounds: CGRect
     let horizontal: Bool
+    let format: TeamFormat?
     var isUsable: Bool { bounds.width > 0 && bounds.height > 0 }
     var interactionBounds: CGRect { isUsable ? bounds.insetBy(dx: -2, dy: -2) : bounds }
-    var metersToPoints: CGFloat { horizontal ? bounds.width / PitchDimensions.length : bounds.width / PitchDimensions.width }
+    var fieldLength: CGFloat { format?.fieldLength ?? PitchDimensions.length }
+    var fieldWidth: CGFloat { format?.fieldWidth ?? PitchDimensions.width }
+    var goalWidth: CGFloat { format?.goalWidth ?? PitchDimensions.goalWidth }
+    var fullSizeMarkings: Bool { format == nil || format == .eleven }
+    var metersToPoints: CGFloat { horizontal ? bounds.width / fieldLength : bounds.width / fieldWidth }
 
-    init(size: CGSize, horizontal: Bool) {
+    init(size: CGSize, horizontal: Bool, format: TeamFormat? = nil) {
         let size = CGSize(width: max(0, size.width), height: max(0, size.height))
         let inset = PitchDimensions.inset(for: size)
         let field = PitchDimensions.fittedPlayingSize(
             in: CGSize(width: size.width - inset * 2, height: size.height - inset * 2),
-            horizontal: horizontal
+            horizontal: horizontal, format: format
         )
         self.bounds = CGRect(
             x: (size.width - field.width) / 2, y: (size.height - field.height) / 2,
             width: field.width, height: field.height
         )
         self.horizontal = horizontal
+        self.format = format
     }
 
     func location(_ point: FieldPoint) -> CGPoint {
@@ -171,7 +179,7 @@ struct PitchProjection {
     }
 
     func meterLocation(depth: CGFloat, width: CGFloat) -> CGPoint {
-        location(FieldPoint(depth: Double(depth / PitchDimensions.length), width: Double(width / PitchDimensions.width)))
+        location(FieldPoint(depth: Double(depth / fieldLength), width: Double(width / fieldWidth)))
     }
 
     func meterRectangle(depth: ClosedRange<CGFloat>, width: ClosedRange<CGFloat>) -> CGRect {
