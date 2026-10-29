@@ -100,6 +100,73 @@ final class DeviceLayoutTests: XCTestCase {
         }
     }
 
+    func testFlatDuoUsesDedicatedControlsBelowOrdinaryDeskBreakpoints() throws {
+        let size = CGSize(width: 500, height: 800)
+        let duo = CoachingLayout.resolve(size: size, division: nil, duoDisplay: true)
+        XCTAssertEqual(duo.mode, .desk)
+        XCTAssertTrue(duo.usesDuoControls)
+        XCTAssertEqual(duo.pitchPane.height, size.height)
+        XCTAssertEqual(try XCTUnwrap(duo.coachPane).minX, duo.pitchPane.maxX)
+        XCTAssertEqual(duo.controlSections, [.routes, .ai, .role])
+        XCTAssertEqual(duo.controlPanelPadding, 22)
+        let regular = CoachingLayout.resolve(size: size, division: nil)
+        XCTAssertEqual(regular.mode, .compact)
+        XCTAssertFalse(regular.usesDuoControls)
+    }
+
+    func testSameWideWindowUsesDifferentDuoAndRegularControlPresentations() {
+        let size = CGSize(width: 650, height: 500)
+        let duo = CoachingLayout.resolve(size: size, division: nil, duoDisplay: true)
+        let regular = CoachingLayout.resolve(size: size, division: nil)
+        XCTAssertEqual(duo.mode, .desk)
+        XCTAssertEqual(regular.mode, .desk)
+        XCTAssertEqual(duo.controlSections, [.routes, .ai, .role])
+        XCTAssertEqual(regular.controlSections, [.role, .routes, .ai])
+        XCTAssertEqual(duo.controlPanelPadding, 22)
+        XCTAssertEqual(regular.controlPanelPadding, 14)
+    }
+
+    func testActiveBookFoldSelectsDuoControlsEvenWithoutInactiveRegionDetection() {
+        let layout = CoachingLayout.resolve(
+            size: CGSize(width: 800, height: 700),
+            division: CGRect(x: 380, y: 0, width: 40, height: 700)
+        )
+        XCTAssertEqual(layout.mode, .book)
+        XCTAssertTrue(layout.usesDuoControls)
+        XCTAssertEqual(layout.controlSections.first, .routes)
+    }
+
+    func testActiveTabletopFoldAlsoKeepsDedicatedDuoControls() {
+        let layout = CoachingLayout.resolve(
+            size: CGSize(width: 800, height: 700),
+            division: CGRect(x: 0, y: 330, width: 800, height: 40)
+        )
+        XCTAssertEqual(layout.mode, .tabletop)
+        XCTAssertTrue(layout.usesDuoControls)
+        XCTAssertEqual(layout.controlSections, [.routes, .ai, .role])
+    }
+
+    func testAccessibilityTextDoesNotSwitchFlatDuoToRegularPhoneControls() {
+        let layout = CoachingLayout.resolve(
+            size: CGSize(width: 500, height: 800), division: nil, largeText: true, duoDisplay: true
+        )
+        XCTAssertEqual(layout.mode, .desk)
+        XCTAssertTrue(layout.usesDuoControls)
+    }
+
+    func testClosedOrTooNarrowDuoViewDoesNotForceTwoUnusablePanes() throws {
+        for width in [390.0, 479] {
+            let layout = CoachingLayout.resolve(size: CGSize(width: width, height: 800), division: nil, duoDisplay: true)
+            XCTAssertEqual(layout.mode, .compact)
+            XCTAssertFalse(layout.usesDuoControls)
+            XCTAssertNil(layout.coachPane)
+        }
+        let minimum = CoachingLayout.resolve(size: CGSize(width: 480, height: 800), division: nil, duoDisplay: true)
+        XCTAssertEqual(minimum.mode, .desk)
+        XCTAssertEqual(minimum.pitchPane.width, 240)
+        XCTAssertEqual(try XCTUnwrap(minimum.coachPane).width, 240)
+    }
+
     func testSmallPhonesUseTighterMarginsAndNoOversizedIntroduction() {
         let small = CompactPitchMetrics.resolve(size: CGSize(width: 320, height: 480), largeText: false)
         XCTAssertEqual(small.padding, 14)

@@ -23,6 +23,11 @@ Apple's store name "CoachAI" was unavailable; the on-device display name remains
   without scrolling or an aspect-ratio size cap; all controls live in the
   independently scrolling right panel. A horizontal tabletop fold uses a full
   top pitch pane and bottom controls so nothing crosses the hinge.
+- Duo uses its dedicated route-tools / AI / role control ordering and spacing,
+  independent of regular-device refinements. Active folds select that presentation
+  directly; the fully open inner display uses inactive division information.
+  A flat Duo window with room for two 240-point panes keeps the full-pitch desk.
+  Closed or narrower views retain usable compact controls.
 - Regular phone landscape and medium iPad windows also get a fixed pitch with
   right-hand settings, based on the safe-area window size rather than a device
   model. Small portrait screens place role controls near the pitch, omit the

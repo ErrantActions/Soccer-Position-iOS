@@ -81,10 +81,11 @@ struct CoachView: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 20) {
                             brand
-                            sectionEyebrow(layout.mode == .tabletop ? "TOUCHLINE CONTROLS" : "THE COACH'S VIEW")
-                            coachingControls()
+                            sectionEyebrow(layout.mode == .tabletop ? "TOUCHLINE CONTROLS" :
+                                            layout.usesDuoControls ? "DUO COACHING DESK" : "THE COACH'S VIEW")
+                            coachingControls(layout: layout)
                         }
-                        .padding(coach.width < 300 ? 14 : 22)
+                        .padding(layout.controlPanelPadding)
                     }
                     .frame(width: coach.width, height: coach.height)
                     .position(x: coach.midX, y: coach.midY)
@@ -229,7 +230,7 @@ struct CoachView: View {
                 if duo || layout.mode == .book || layout.mode == .tabletop {
                     duoBadge(layout.mode)
                 }
-                coachingControls(includeRole: false)
+                coachingControls(includeRole: false, layout: layout)
             }
             .padding(metrics.padding)
             .frame(maxWidth: 650)
@@ -391,11 +392,15 @@ struct CoachView: View {
         .coachCard()
     }
 
-    private func coachingControls(includeRole: Bool = true) -> some View {
+    private func coachingControls(includeRole: Bool = true, layout: CoachingLayout) -> some View {
         VStack(alignment: .leading, spacing: 18) {
-            if includeRole { roleCard }
-            routePanel
-            aiPositioningPanel
+            ForEach(layout.controlSections.filter { includeRole || $0 != .role }, id: \.self) { section in
+                switch section {
+                case .role: roleCard
+                case .routes: routePanel
+                case .ai: aiPositioningPanel
+                }
+            }
             VStack(alignment: .leading, spacing: 14) {
                 sectionEyebrow("02  SET THE SCENE")
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -742,7 +747,9 @@ struct CoachView: View {
 
     private func hasDuoDisplay(_ geometry: GeometryProxy) -> Bool {
         if #available(iOS 27.1, *) {
-            return !geometry.reservedRegions(kind: .division, options: .includeInactive).isEmpty
+            return !geometry.reservedRegions(
+                kind: .division, options: .includeInactive, layoutDirectionBehavior: .fixed
+            ).isEmpty
         }
         return false
     }

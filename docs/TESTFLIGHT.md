@@ -434,3 +434,20 @@ This verifies the declaration's source-to-upload path and current Apple handling
 the original prompts on older builds were not reproduced. Visual appearance,
 rotation, iPad window resizing and accessibility behavior still require physical
 device verification.
+
+## Dedicated Duo control presentation
+
+Duo and ordinary devices now choose separate control presentations. An active
+book or tabletop division always selects Duo controls, even if the separate
+inactive-region query does not identify the display. A flat inner display uses
+Apple's inactive division information and keeps a two-pane desk whenever both
+panes can be at least 240 points wide.
+
+Duo restores its route-tools, AI-positioning, then role-selector ordering and
+22-point panel spacing. Ordinary devices retain role-first controls and tighter
+narrow-panel spacing. This policy is shared by the pure layout model and actual
+SwiftUI control rendering, rather than duplicated device-name checks.
+The pitch remains fixed in its own pane; a horizontal tabletop hinge still uses
+the other pane below the pitch. Closed or genuinely narrow windows retain compact
+controls instead of forcing unusable columns. Verify the flat/folded transitions
+on the phone; compilation and geometry tests do not establish physical behavior.

@@ -6,9 +6,23 @@ struct CoachingLayout: Equatable {
         case compact, desk, book, tabletop
     }
 
+    enum ControlSection: Hashable {
+        case role, routes, ai
+    }
+
     let mode: Mode
     let pitchPane: CGRect
     let coachPane: CGRect?
+    let usesDuoControls: Bool
+
+    var controlSections: [ControlSection] {
+        usesDuoControls ? [.routes, .ai, .role] : [.role, .routes, .ai]
+    }
+
+    var controlPanelPadding: CGFloat {
+        guard let coachPane else { return 0 }
+        return usesDuoControls || coachPane.width >= 300 ? 22 : 14
+    }
 
     static func resolve(
         size: CGSize, division: CGRect?, largeText: Bool = false, duoDisplay: Bool = false
@@ -20,19 +34,19 @@ struct CoachingLayout: Equatable {
                 let leading = CGRect(x: 0, y: 0, width: fold.minX, height: size.height)
                 let trailing = CGRect(x: fold.maxX, y: 0, width: size.width - fold.maxX, height: size.height)
                 if min(leading.width, trailing.width) >= 160 {
-                    return CoachingLayout(mode: .book, pitchPane: leading, coachPane: trailing)
+                    return CoachingLayout(mode: .book, pitchPane: leading, coachPane: trailing, usesDuoControls: true)
                 }
-                return CoachingLayout(mode: .compact, pitchPane: leading.width > trailing.width ? leading : trailing, coachPane: nil)
+                return CoachingLayout(mode: .compact, pitchPane: leading.width > trailing.width ? leading : trailing, coachPane: nil, usesDuoControls: false)
             } else if !fold.isNull {
                 let top = CGRect(x: 0, y: 0, width: size.width, height: fold.minY)
                 let bottom = CGRect(x: 0, y: fold.maxY, width: size.width, height: size.height - fold.maxY)
                 if min(top.height, bottom.height) >= 120 {
-                    return CoachingLayout(mode: .tabletop, pitchPane: top, coachPane: bottom)
+                    return CoachingLayout(mode: .tabletop, pitchPane: top, coachPane: bottom, usesDuoControls: true)
                 }
-                return CoachingLayout(mode: .compact, pitchPane: top.height > bottom.height ? top : bottom, coachPane: nil)
+                return CoachingLayout(mode: .compact, pitchPane: top.height > bottom.height ? top : bottom, coachPane: nil, usesDuoControls: false)
             }
         }
-        let duoDesk = duoDisplay && size.width >= 520
+        let duoDesk = duoDisplay && size.width >= 480
         let landscapePhone = size.width >= 560 && size.width > size.height
         let regularDesk = size.width >= 680 || landscapePhone
         if (regularDesk || duoDesk), (!largeText || duoDesk) {
@@ -42,10 +56,11 @@ struct CoachingLayout: Equatable {
             return CoachingLayout(
                 mode: .desk,
                 pitchPane: CGRect(x: 0, y: 0, width: size.width - sidebar, height: size.height),
-                coachPane: CGRect(x: size.width - sidebar, y: 0, width: sidebar, height: size.height)
+                coachPane: CGRect(x: size.width - sidebar, y: 0, width: sidebar, height: size.height),
+                usesDuoControls: duoDesk
             )
         }
-        return CoachingLayout(mode: .compact, pitchPane: bounds, coachPane: nil)
+        return CoachingLayout(mode: .compact, pitchPane: bounds, coachPane: nil, usesDuoControls: false)
     }
 }
 
