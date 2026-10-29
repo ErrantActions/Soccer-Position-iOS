@@ -226,8 +226,10 @@ No public App Store release is submitted by these workflows.
   local `.p12` and App Store Connect upload `.p8` credentials were reused through
   the secure local helper, with the password entered in a masked terminal.
   Existing encrypted GitHub secrets were not read back or copied.
-- Eleven local Python/Node guard tests and the PowerShell owner-review/admin-bypass
-  tests passed, along with plist/icon, shell, Python, PowerShell and workflow checks.
+- Twenty-two local Python/Node guard tests, including a real OpenSSL container
+  conversion test using a synthetic certificate, and PowerShell main-only/
+  admin-bypass/optional-reviewer tests passed. Plist/icon, shell, Python,
+  PowerShell and workflow checks also passed.
   The workflow validator required the documented Xcode 27 preview-label exception.
 - The first manual unsigned Xcode validation was requested against
   `16f3c06e0149df68941d072a85ed5cc0e53edfa7`:
@@ -239,11 +241,20 @@ No public App Store release is submitted by these workflows.
   `invalidDigitCount` diagnostic; it does not establish passing native tests.
   The test harness now selects SDK-compatible runtimes, checks boot readiness and
   tests individual destinations with bounded waits instead of one multi-destination run.
-- The TestFlight tab was verified to show **Submit a build to start testing**.
-  No signed archive, TestFlight upload, Apple processing or physical iPhone
-  installation has been verified. After credentials are ready, run TestFlight
-  directly for the release candidate; do not add a duplicate simulator run.
 - The owner subsequently requested physical-phone testing instead of waiting for
   simulators. The remaining simulator run was cancelled, and TestFlight now has an
   explicit `run_simulator_tests` input. Use `false` for this upload; a successful
   upload must not be described as passing simulator tests.
+- Signed archive, IPA export, TestFlight upload and signing cleanup succeeded in
+  [release run 40799030087](https://github.com/ErrantActions/Soccer-Position-iOS/actions/runs/40799030087)
+  against commit `c7aaf4f139e8590eaddfa35a78dad4f666df2b23`. The release selected
+  build **1**; no simulator tests or release artifacts were requested.
+- Apple subsequently reported build `4c54f2ca-a0d6-4640-bead-5a0ec4c0cf80`
+  (version **1**) as `VALID`, not expired, with internal state
+  `READY_FOR_BETA_TESTING` and external state `READY_FOR_BETA_SUBMISSION`.
+  This verifies processing, not Beta App Review or an App Store release.
+- No tester groups were assigned at this check. In App Store Connect > CoachAI
+  Soccer Positions > TestFlight, create an internal group, add your App Store
+  Connect user, and assign build 1. Then accept its invitation and install through
+  Apple's TestFlight app. Physical iPhone installation, folding behavior and
+  on-device AI still require owner verification.
