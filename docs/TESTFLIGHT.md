@@ -412,3 +412,25 @@ the app's cryptography changes; do not retain this exemption blindly.
 
 - [Apple: ITSAppUsesNonExemptEncryption](https://developer.apple.com/documentation/bundleresources/information-property-list/itsappusesnonexemptencryption)
 - [Apple: export compliance overview](https://developer.apple.com/help/app-store-connect/manage-app-information/overview-of-export-compliance/)
+
+### Device and compliance release: build 5
+
+[Release run 40817495920](https://github.com/ErrantActions/Soccer-Position-iOS/actions/runs/40817495920)
+deployed main commit `e5f3797e16a399cc214b1db4e86efd1760ce3808` as **build 5**.
+All **64 Swift tests**, including the 12 new device-layout/fit tests, and **29
+release/compliance guard tests** passed. Native archive/export/upload and signing
+cleanup succeeded; simulator execution was waived and no artifacts were uploaded.
+
+The actual archived app and exported IPA both passed the exact boolean
+`ITSAppUsesNonExemptEncryption=false` checks. After processing, Apple reported
+build `785f9a1e-c132-43da-91f9-c25620b99507` as `VALID`, not expired, with
+`usesNonExemptEncryption=false` and internal state `IN_BETA_TESTING`.
+No compliance metadata PATCH or questionnaire answers were submitted by the
+agent for this build. Access was verified in the existing internal group and
+English testing notes were saved/read back. External groups and France
+availability were not changed.
+
+This verifies the declaration's source-to-upload path and current Apple handling;
+the original prompts on older builds were not reproduced. Visual appearance,
+rotation, iPad window resizing and accessibility behavior still require physical
+device verification.
