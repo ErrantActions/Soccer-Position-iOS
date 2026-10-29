@@ -1,5 +1,27 @@
 # CoachAI publication and TestFlight runbook
 
+## Task-based controls organization release: build 14
+
+Source commit `fdafcf5b415de207d0de09a3b1bede8f8f159612` passed **180 portable
+Swift tests**, **34 release guards**, PowerShell upload guards, native archive,
+IPA export, compliance validation and upload in
+[release run 40972985820](https://github.com/ErrantActions/Soccer-Position-iOS/actions/runs/40972985820).
+Local whitespace and staged credential-pattern checks passed. No simulator
+execution, duplicate validation run or release artifacts were requested;
+temporary signing cleanup succeeded.
+
+Apple build `eb82e29a-d0c6-4d63-aa6d-5a6bd19f7511` (version **14**) was verified
+as `VALID`, not expired, `usesNonExemptEncryption=false` and `IN_BETA_TESTING`.
+Existing automatic internal group access and English testing notes were verified.
+No external group or public App Store submission was changed.
+
+Navigation tests cover every group/destination mapping, expandable-tool reveal,
+repeated shortcut refocus, compact Draw pitch focus, narrow/accessibility column
+policy and unchanged Duo layout policy. Native compilation verifies the grouped
+SwiftUI surfaces, not physical navigation behavior. Check mode preservation,
+draft/keyboard interactions, visible errors, VoiceOver, folding and TV privacy
+on the device using the list below.
+
 ## Organized controls device checks
 
 The main controls now use Coach, Plays, Practice and Present groups. The designer
