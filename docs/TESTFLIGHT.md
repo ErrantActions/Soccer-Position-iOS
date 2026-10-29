@@ -491,3 +491,35 @@ logs, archives and signing files are not artifacts. The release continues to use
 `run_simulator_tests=false` under the owner's standing phone-testing preference.
 Do not claim the render check passed unless its native assertions and screenshot
 export actually succeeded.
+
+The focused check has an explicit `toolbar_check_device` choice: `duo` (default)
+or `compatible`. Compatible checks shared action wiring on an ordinary installed
+iPhone runtime; it does not verify Duo-specific placement. Build-for-testing runs
+before simulator startup to avoid competing memory loads. Build, readiness, UI
+execution, shutdown and screenshot export each have bounded waits, and cleanup
+failures no longer hide the primary failure. Ordinary simulator tests explicitly
+select `CoachAITests`, so this UI check is never added silently to that suite.
+
+### Empty native bar investigation
+
+The missing integration was concrete: earlier builds had custom card controls but
+no native navigation container/toolbar registration. The fix registers four native
+actions (position, draw, AI, More) independently of the fold/pane-selection query.
+This keeps a failed posture classification from emptying the native action bar.
+
+The hosted checks did **not** produce a passing UI smoke test or screenshots:
+
+- Run 40822413149 stopped at a Swift 6 actor-isolation error in the new test setup,
+  before an app-level reproduction. The test setup was corrected.
+- Run 40823391089 reached the Duo app and passed presence/hittability checks for
+  all four native buttons. Its custom Draw accessibility-value assertion failed
+  and the run timed out; this is not a full functional pass. Draw now has an
+  explicit state-dependent accessibility label, and the test checks that label.
+- Run 40824774637 failed during Duo simulator readiness; shutdown failure masked
+  that primary error. Error preservation was corrected.
+- Explicit compatible-runtime run 40825728891 compiled the app and UI runner
+  successfully, then timed out during simulator readiness.
+
+Do not relabel these infrastructure or partial results as successful rendering.
+The native-bar fix should be verified on the owner's physical Duo through
+TestFlight, including drawing, position selection, More actions and AI analysis.
