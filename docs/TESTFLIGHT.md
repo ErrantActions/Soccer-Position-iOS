@@ -1,5 +1,27 @@
 # CoachAI publication and TestFlight runbook
 
+## Custom designer and ten-play catalog release: build 11
+
+Source commit `0aa4281ed323d0f903b9219abebaa9043100e688` passed **147 portable
+Swift tests**, **34 release guards**, PowerShell upload guards, native archive,
+IPA export, compliance validation and upload in
+[release run 40924115283](https://github.com/ErrantActions/Soccer-Position-iOS/actions/runs/40924115283).
+Local workflow lint, whitespace and staged credential-pattern checks passed.
+No simulator execution, duplicate validation job or release artifacts were
+requested; temporary signing cleanup succeeded.
+
+After Apple's processing delay, build `2198d4e6-f030-4794-8046-1b7d8713ecc2`
+(version **11**) was verified as `VALID`, not expired,
+`usesNonExemptEncryption=false` and `IN_BETA_TESTING`. Existing automatic internal
+group access and English testing notes were verified. No external group or public
+App Store submission was changed.
+
+The app and designer compiled against Xcode 27.1. Tests cover draft operations,
+phase/roster/time limits, incomplete text, provenance, immutable example copies,
+JSON roundtrips and all ten researched animations. Physical drag/VoiceOver,
+keyboard/undo interactions, Duo folding and audience-display privacy still need
+device verification; they are not established by portable tests or compilation.
+
 ## Custom designer and expanded catalog device checks
 
 The designer creates animations from the current editable scene and edits saved
