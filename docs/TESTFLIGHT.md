@@ -1,5 +1,23 @@
 # CoachAI publication and TestFlight runbook
 
+## Coaching workbench release: build 9
+
+Source commit `2ed42b7eb9842ecaaa3f0c4ecae0287c508c0761` passed
+**107 portable Swift tests**, **34 release guard tests**, PowerShell upload guards,
+and native signed archive/export/upload in
+[release run 40832370793](https://github.com/ErrantActions/Soccer-Position-iOS/actions/runs/40832370793).
+Local guard tests, workflow lint and staged-file credential checks also passed.
+The first candidate caught Foundation's alternate missing-file error during the
+new repository test; the first-launch handling was corrected before this release.
+No simulator execution or release artifacts were requested. Temporary signing
+cleanup passed.
+
+Apple build `bd482314-8d94-41ad-9d74-667e5088aa37` (version **9**) is `VALID`,
+not expired, `usesNonExemptEncryption=false`, and `IN_BETA_TESTING`. Access in the
+existing automatic internal group and English testing notes were verified.
+No external group or public App Store submission was changed. Physical phone
+installation, UI interactions, speech, VoiceOver and folding remain device checks.
+
 ## Coaching workbench device checks
 
 The workbench adds local named plays, notes/favorites, JSON import/share, SVG
