@@ -451,3 +451,19 @@ The pitch remains fixed in its own pane; a horizontal tabletop hinge still uses
 the other pane below the pitch. Closed or genuinely narrow windows retain compact
 controls instead of forcing unusable columns. Verify the flat/folded transitions
 on the phone; compilation and geometry tests do not establish physical behavior.
+
+### Duo controls release: build 6
+
+[Release run 40818947225](https://github.com/ErrantActions/Soccer-Position-iOS/actions/runs/40818947225)
+deployed commit `d55565d1bc5d60cecdd1b1b7bad4e719ebbfa54c` as **build 6**.
+All **70 Swift tests**, including six new Duo-vs-ordinary control-presentation
+regressions, and **29 release/compliance guards** passed. Native signed
+archive/export/upload and cleanup succeeded without simulator execution or
+uploaded artifacts. The actual archive and IPA retained the exempt-encryption
+boolean.
+
+Apple reported build `9d9ff2c5-3076-4150-a2e4-6d590c1cde86` as `VALID`, not
+expired, with `usesNonExemptEncryption=false` and internal state
+`IN_BETA_TESTING`. Existing internal-group access and English testing notes were
+verified. No external group was changed; physical Duo behavior remains to check
+through TestFlight.
