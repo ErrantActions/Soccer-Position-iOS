@@ -101,10 +101,54 @@ Apple's store name "CoachAI" was unavailable; the on-device display name remains
   Standard, Large or Extra large. This is a session-only audience preference;
   phone/tablet markers, saved coordinates, field proportions and SVG exports
   remain unchanged.
+- Controls are organized into **Coach / Plays / Practice / Present** workspaces
+  rather than one long settings list. Drawing and AI/explanations are expandable;
+  ball/player editing is grouped under the scene. The native Duo toolbar stays
+  available and reveals the relevant tool group.
 
 The default instant guide is a deliberately simplified native teaching model, not feature parity
 with the web application's full multi-player tactical engine or challenge mode.
 It is not professional match analysis. Model-generated explanations can be wrong.
+
+## Where to find controls
+
+The field stays in the same pane while the tool panel changes:
+
+| Group | Controls |
+|---|---|
+| **Coach** | Current cue, ball presets/sliders, current-player editing, formation, role, drawing/routes, AI positioning/explanations, comparison, pitch layers and spoken cue |
+| **Plays** | Library/quick save, kids/smaller-team setup and captured main-board sequences |
+| **Practice** | Start/check/reveal/next/end, role, ball scenarios, your-player coordinates, post-reveal explanation and spoken cue |
+| **Present** | External-display status, blanking, TV marker size, current cue, spoken coaching and a shortcut to sequence controls |
+
+Switching groups does not reset field coordinates, routes, AI mode, practice or
+sequence state. Active practice, drawing and playback remain identified outside
+their own group, with open/end/pause actions. Errors and storage/speech feedback
+remain visible across groups. Starting/stopping a mode is still an explicit action.
+Native Draw and Analyze reveal their expandable Coach sections; library, capture,
+practice and presentation shortcuts focus the appropriate group. In compact
+portrait, native Draw focuses the pitch rather than scrolling it off-screen.
+
+The native More menu is grouped into **Library & teams / Coaching session /
+Routes / Display**. Narrow panes and accessibility text use a one-column tool
+selector; wider panes use two columns. The dedicated Duo route/AI/role ordering,
+fixed field pane, hidden collapsing navigation title and real pitch proportions
+are preserved.
+
+The animated-play designer has **Phases / Players / Setup / Details** groups.
+Timing/cues stay with phases; coordinates, labels, keepers and roster stay with
+players; destructive team-layout replacement is isolated in Setup; name, notes,
+favorite and expandable presentation settings live in Details. Preview/Save and
+native undo/redo stay available, with validation errors visible in every group.
+Native capture/add-player actions reveal Phases/Players without losing draft data.
+Help is expandable rather than repeating a large instruction card.
+
+The play viewer keeps playback controls and the current cue prominent; notes/
+sources and presentation options expand on demand. A connected external display
+opens the presentation section automatically. Playbook row menus group **Open &
+edit / Organize / Share** actions without changing persistence or sharing formats.
+Tool-group and disclosure choices last for the current session, not a stored
+preference; no new privacy API, account or permission is introduced.
 
 ## Coaching workbench
 

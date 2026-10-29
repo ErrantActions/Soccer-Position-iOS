@@ -97,6 +97,8 @@ struct AnimationPlayerView: View {
     let play: SavedPlay
     @State private var playback = AnimationPlayback()
     @State private var speech = SpeechCoach()
+    @State private var detailsExpanded = false
+    @State private var presentationExpanded = false
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -157,11 +159,15 @@ struct AnimationPlayerView: View {
         }
         .preferredColorScheme(.dark).tint(CoachPalette.lime)
         .background(ExternalFieldAccessory().allowsHitTesting(false))
-        .onAppear { if let clip = play.animation { playback.load(clip) } }
+        .onAppear {
+            if let clip = play.animation { playback.load(clip) }
+            presentationExpanded = FieldPresentation.shared.connected
+        }
         .onDisappear { playback.close(); speech.stop() }
         .onChange(of: scenePhase) { if scenePhase != .active { playback.pause(); speech.stop() } }
         .onChange(of: reduceMotion) { playback.seek(to: playback.elapsed, reducedMotion: reduceMotion) }
         .onChange(of: playback.frame?.cue) { speech.stop() }
+        .onChange(of: FieldPresentation.shared.connected) { if FieldPresentation.shared.connected { presentationExpanded = true } }
     }
 
     @ViewBuilder private var field: some View {
@@ -215,12 +221,15 @@ struct AnimationPlayerView: View {
             }
             Text("Lime: coaching team. Red: opposition. Attack toward the opposite goal; coordinates are illustrative, not a complete offside or match simulation.")
                 .font(.caption).foregroundStyle(CoachPalette.muted)
-            if !play.notes.isEmpty { Text(play.notes).font(.subheadline).textSelection(.enabled) }
             Button(speech.speaking ? "Stop spoken cue" : "Speak this cue", systemImage: "speaker.wave.2") {
                 if speech.speaking { speech.stop() }
                 else if let cue = playback.frame?.cue { playback.pause(); speech.speak(cue) }
             }.frame(minHeight: 44)
-            PresenterControls()
+            ExpandableToolGroup("Presentation & TV", systemImage: "tv", expanded: $presentationExpanded) {
+                PresenterControls()
+            }
+            ExpandableToolGroup("Notes & sources", systemImage: "book", expanded: $detailsExpanded) {
+            if !play.notes.isEmpty { Text(play.notes).font(.subheadline).textSelection(.enabled) }
             VStack(alignment: .leading, spacing: 12) {
                 Label("Sources and authorship", systemImage: "link").font(.headline)
                 Text(provenance)
@@ -236,6 +245,7 @@ struct AnimationPlayerView: View {
                 Text("Links open the web only when tapped. Exported JSON keeps the full animation; SVG is a static opening-frame diagram.")
                     .font(.caption2).foregroundStyle(CoachPalette.muted)
             }.coachCard()
+            }
         }
     }
 

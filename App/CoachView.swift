@@ -45,6 +45,7 @@ struct CoachView: View {
     @State private var practiceHits = 0
     @State private var workbenchNotice: String?
     @State private var workbenchError: String?
+    @State private var navigation = ControlNavigation()
     @State private var explanation: String?
     @State private var message: String?
     @State private var isGenerating = false
@@ -104,14 +105,17 @@ struct CoachView: View {
                     .frame(width: layout.pitchPane.width, height: layout.pitchPane.height)
                     .position(x: layout.pitchPane.midX, y: layout.pitchPane.midY)
                 if let coach = layout.coachPane {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 20) {
-                            brand
-                            sectionEyebrow(layout.mode == .tabletop ? "TOUCHLINE CONTROLS" :
-                                            layout.usesDuoControls ? "DUO COACHING DESK" : "THE COACH'S VIEW")
-                            coachingControls(layout: layout)
+                    ScrollViewReader { reader in
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 20) {
+                                brand
+                                sectionEyebrow(layout.mode == .tabletop ? "TOUCHLINE CONTROLS" :
+                                                layout.usesDuoControls ? "DUO COACHING DESK" : "THE COACH'S VIEW")
+                                coachingControls(layout: layout)
+                            }
+                            .padding(layout.controlPanelPadding)
                         }
-                        .padding(layout.controlPanelPadding)
+                        .onChange(of: navigation.revision) { reader.scrollTo(navigation.anchor, anchor: .top) }
                     }
                     .frame(width: coach.width, height: coach.height)
                     .position(x: coach.midX, y: coach.midY)
@@ -159,7 +163,7 @@ struct CoachView: View {
             speech.stop()
             sceneEditTarget = .ball
             drawing = false
-            if aiPositioning { analyzePositions() }
+            if aiPositioning { navigation.reveal(.analysis); analyzePositions() }
         }
         .onChange(of: autoAnalyze) {
             if autoAnalyze, aiPositioning, !sceneEditing { analyzePositions(debounced: true) }
@@ -175,7 +179,10 @@ struct CoachView: View {
             if practice != nil { practice = PracticeRound(ball: ball, role: position) }
             invalidateExplanation()
         }
-        .onChange(of: drawing) { routeDrawing.cancelStroke() }
+        .onChange(of: drawing) {
+            routeDrawing.cancelStroke()
+            if drawing { navigation.reveal(.routes) }
+        }
         .onChange(of: routeStyle) { routeDrawing.cancelStroke() }
         .onChange(of: snapRoutes) { routeDrawing.cancelStroke() }
         .onChange(of: scenePhase) {
@@ -227,26 +234,34 @@ struct CoachView: View {
             .accessibilityIdentifier("coach.toolbar.analyze")
 
             Menu {
-                Button("Open playbook", systemImage: "books.vertical", action: openPlaybook)
-                Button("Kids & smaller teams", systemImage: "figure.child", action: openYouthSetup)
-                Button("Save current setup", systemImage: "bookmark", action: quickSave)
-                    .disabled(playbook.busy || !playbook.loaded || !playbook.writable || practice != nil || isPlaying)
-                Button("Capture sequence step", systemImage: "plus.rectangle.on.rectangle", action: captureStep)
-                    .disabled(practice != nil || isPlaying || frames.count >= 24)
-                Button(practice == nil ? "Practice positioning" : "End practice", systemImage: "scope", action: togglePractice)
-                    .disabled(isPlaying)
-                Button(speech.speaking ? "Stop spoken coaching" : "Speak coaching cue", systemImage: "speaker.wave.2", action: speakCue)
-                    .disabled(isPlaying || (practice != nil && practice?.revealed == false))
-                if isPlaying { Button("Pause sequence", systemImage: "pause", action: pauseSequence) }
-                Divider()
-                Button("Undo route", systemImage: "arrow.uturn.backward") { routeDrawing.undo() }
-                    .disabled(!routeDrawing.canUndo || practice != nil || isPlaying)
-                Button("Redo route", systemImage: "arrow.uturn.forward") { routeDrawing.redo() }
-                    .disabled(!routeDrawing.canRedo || practice != nil || isPlaying)
-                Button("Reset ball", systemImage: "arrow.counterclockwise", action: resetBallPosition)
-                    .disabled(isPlaying)
-                Toggle("Position glow", isOn: $showHeat)
-                Toggle("Goal-side guide", isOn: $showGuides)
+                Section("Library & teams") {
+                    Button("Open playbook", systemImage: "books.vertical", action: openPlaybook)
+                    Button("Kids & smaller teams", systemImage: "figure.child", action: openYouthSetup)
+                    Button("Save current setup", systemImage: "bookmark", action: quickSave)
+                        .disabled(playbook.busy || !playbook.loaded || !playbook.writable || practice != nil || isPlaying)
+                    Button("Capture sequence step", systemImage: "plus.rectangle.on.rectangle", action: captureStep)
+                        .disabled(practice != nil || isPlaying || frames.count >= 24)
+                }
+                Section("Coaching session") {
+                    Button(practice == nil ? "Practice positioning" : "End practice", systemImage: "scope", action: togglePractice)
+                        .disabled(isPlaying)
+                    Button(speech.speaking ? "Stop spoken coaching" : "Speak coaching cue", systemImage: "speaker.wave.2", action: speakCue)
+                        .disabled(isPlaying || (practice != nil && practice?.revealed == false))
+                    if isPlaying { Button("Pause sequence", systemImage: "pause", action: pauseSequence) }
+                    Button("Reset ball", systemImage: "arrow.counterclockwise", action: resetBallPosition)
+                        .disabled(isPlaying)
+                }
+                Section("Routes") {
+                    Button("Undo route", systemImage: "arrow.uturn.backward") { routeDrawing.undo() }
+                        .disabled(!routeDrawing.canUndo || practice != nil || isPlaying)
+                    Button("Redo route", systemImage: "arrow.uturn.forward") { routeDrawing.redo() }
+                        .disabled(!routeDrawing.canRedo || practice != nil || isPlaying)
+                }
+                Section("Display") {
+                    Button("Presentation & TV settings", systemImage: "tv") { navigation.reveal(.presentation) }
+                    Toggle("Position glow", isOn: $showHeat)
+                    Toggle("Goal-side guide", isOn: $showGuides)
+                }
             } label: {
                 Label("More pitch actions", systemImage: "ellipsis")
             }
@@ -306,59 +321,63 @@ struct CoachView: View {
     private func pitchPane(layout: CoachingLayout, duo: Bool) -> some View {
         let metrics = CompactPitchMetrics.resolve(size: layout.pitchPane.size, largeText: typeSize.isAccessibilitySize)
         let horizontal = metrics.horizontal
-        return ScrollView {
-            VStack(alignment: .leading, spacing: metrics.spacing) {
-                brand
-                if metrics.showIntroduction {
-                    VStack(alignment: .leading, spacing: 7) {
-                        sectionEyebrow("YOUR POSITION LAB")
-                        Text("Read the game.\nOwn your space.")
-                            .font(.system(.title2, design: .rounded, weight: .bold))
-                            .tracking(-0.7)
-                            .fixedSize(horizontal: false, vertical: true)
-                        Text("One ball. A better view of your next move.")
-                            .font(.subheadline)
-                            .foregroundStyle(CoachPalette.muted)
-                    }
-                }
-                rolePicker.disabled(isPlaying)
-                VStack(spacing: 14) {
-                    HStack(alignment: .center) {
-                        Label(horizontal ? "Defend left" : "Defend bottom", systemImage: horizontal ? "arrow.left" : "arrow.down")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(CoachPalette.muted)
-                        Spacer()
-                        HStack(spacing: 5) {
-                            Circle().fill(CoachPalette.lime).frame(width: 5, height: 5)
-                            Text(drawing ? "DRAW ROUTE" : acceptedPlan == nil ? "INSTANT GUIDE" : "AI SUGGESTIONS")
-                                .font(.system(.caption2, design: .monospaced, weight: .medium))
-                                .foregroundStyle(CoachPalette.lime)
+        return ScrollViewReader { reader in
+            ScrollView {
+                VStack(alignment: .leading, spacing: metrics.spacing) {
+                    brand
+                    if metrics.showIntroduction {
+                        VStack(alignment: .leading, spacing: 7) {
+                            sectionEyebrow("YOUR POSITION LAB")
+                            Text("Read the game.\nOwn your space.")
+                                .font(.system(.title2, design: .rounded, weight: .bold))
+                                .tracking(-0.7)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Text("One ball. A better view of your next move.")
+                                .font(.subheadline)
+                                .foregroundStyle(CoachPalette.muted)
                         }
                     }
-                    field(horizontal: horizontal)
-                        .frame(width: metrics.pitchSize.width, height: metrics.pitchSize.height)
-                        .frame(maxWidth: .infinity)
-                    HStack(spacing: 16) {
-                        legend(position.rawValue, color: acceptedPlan == nil ? CoachPalette.lime : CoachPalette.ai)
-                        if comparing { legend(comparison.rawValue, color: CoachPalette.blue) }
-                        Label("Ball", systemImage: "soccerball").font(.caption).foregroundStyle(CoachPalette.muted)
-                        Spacer(minLength: 0)
+                    rolePicker.disabled(isPlaying)
+                    VStack(spacing: 14) {
+                        HStack(alignment: .center) {
+                            Label(horizontal ? "Defend left" : "Defend bottom", systemImage: horizontal ? "arrow.left" : "arrow.down")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(CoachPalette.muted)
+                            Spacer()
+                            HStack(spacing: 5) {
+                                Circle().fill(CoachPalette.lime).frame(width: 5, height: 5)
+                                Text(drawing ? "DRAW ROUTE" : acceptedPlan == nil ? "INSTANT GUIDE" : "AI SUGGESTIONS")
+                                    .font(.system(.caption2, design: .monospaced, weight: .medium))
+                                    .foregroundStyle(CoachPalette.lime)
+                            }
+                        }
+                        field(horizontal: horizontal)
+                            .frame(width: metrics.pitchSize.width, height: metrics.pitchSize.height)
+                            .frame(maxWidth: .infinity)
+                            .id("coach.pitch")
+                        HStack(spacing: 16) {
+                            legend(position.rawValue, color: acceptedPlan == nil ? CoachPalette.lime : CoachPalette.ai)
+                            if comparing { legend(comparison.rawValue, color: CoachPalette.blue) }
+                            Label("Ball", systemImage: "soccerball").font(.caption).foregroundStyle(CoachPalette.muted)
+                            Spacer(minLength: 0)
+                        }
+                        Text(drawing ? "Draw a route with your finger or Apple Pencil." :
+                                aiPositioning ? "\(effectiveEditTarget.label) by dragging on the pitch. White outlines are current players; colored markers are suggestions." :
+                                "Drag the ball anywhere. Your positioning updates instantly.")
+                            .font(.caption)
+                            .foregroundStyle(CoachPalette.muted)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    Text(drawing ? "Draw a route with your finger or Apple Pencil." :
-                            aiPositioning ? "\(effectiveEditTarget.label) by dragging on the pitch. White outlines are current players; colored markers are suggestions." :
-                            "Drag the ball anywhere. Your positioning updates instantly.")
-                        .font(.caption)
-                        .foregroundStyle(CoachPalette.muted)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    if duo || layout.mode == .book || layout.mode == .tabletop {
+                        duoBadge(layout.mode)
+                    }
+                    coachingControls(includeRole: false, layout: layout)
                 }
-                if duo || layout.mode == .book || layout.mode == .tabletop {
-                    duoBadge(layout.mode)
-                }
-                coachingControls(includeRole: false, layout: layout)
+                .padding(metrics.padding)
+                .frame(maxWidth: 650)
+                .frame(maxWidth: .infinity)
             }
-            .padding(metrics.padding)
-            .frame(maxWidth: 650)
-            .frame(maxWidth: .infinity)
+            .onChange(of: navigation.revision) { reader.scrollTo(navigation.compactAnchor, anchor: .top) }
         }
     }
 
@@ -510,7 +529,7 @@ struct CoachView: View {
     private var roleCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                sectionEyebrow("01  CHOOSE YOUR ROLE")
+                sectionEyebrow("YOUR DEFENSIVE ROLE")
                 Spacer(minLength: 0)
                 Image(systemName: "person.crop.circle").foregroundStyle(CoachPalette.muted)
             }
@@ -522,21 +541,66 @@ struct CoachView: View {
 
     private func coachingControls(includeRole: Bool = true, layout: CoachingLayout) -> some View {
         VStack(alignment: .leading, spacing: 18) {
-            PresenterControls()
-            youthPanel
-            workbenchPanel
-            practicePanel
-            sequencePanel
-            ForEach(layout.controlSections.filter { includeRole || $0 != .role }, id: \.self) { section in
-                switch section {
-                case .role: roleCard.disabled(isPlaying)
-                case .routes: routePanel.disabled(isPlaying || practice != nil)
-                case .ai: aiPositioningPanel.disabled(isPlaying || practice != nil)
+            WorkspacePicker(selection: Binding(get: { navigation.workspace }, set: { navigation.select($0) }),
+                            symbol: { $0.symbol })
+                .id("coach.workspace")
+            Text(navigation.workspace.summary).font(.caption).foregroundStyle(CoachPalette.muted)
+            sessionActivity
+            sessionFeedback
+            switch navigation.workspace {
+            case .coach:
+                if practice == nil { cueCard }
+                sceneCard.disabled(isPlaying)
+                ForEach(layout.controlSections.filter { includeRole || $0 != .role }, id: \.self) { section in
+                    switch section {
+                    case .role:
+                        roleCard.disabled(isPlaying)
+                    case .routes:
+                        ExpandableToolGroup("Drawing & routes", systemImage: "pencil.tip.crop.circle",
+                                            expanded: $navigation.routesExpanded) { routePanel }
+                            .id("coach.routes").disabled(isPlaying || practice != nil)
+                    case .ai:
+                        ExpandableToolGroup("AI & explanations", systemImage: "sparkles",
+                                            expanded: $navigation.analysisExpanded) {
+                            aiPositioningPanel
+                            if practice == nil { aiCard }
+                        }
+                        .id("coach.analysis").disabled(isPlaying || practice != nil)
+                    }
+                }
+                if practice == nil { comparisonCard.disabled(isPlaying) }
+                pitchSettings.disabled(isPlaying || practice != nil)
+                audioControls
+            case .plays:
+                workbenchPanel.id("coach.library")
+                youthPanel
+                sequencePanel.id("coach.sequence")
+            case .practice:
+                practicePanel.id("coach.practice")
+                if includeRole { roleCard.disabled(isPlaying) }
+                VStack(alignment: .leading, spacing: 14) {
+                    sectionEyebrow("TRY A DIFFERENT BALL SCENE")
+                    scenarioButtons
+                }.coachCard().disabled(isPlaying)
+                if practice?.revealed == true { aiCard }
+                audioControls
+            case .present:
+                PresenterControls().id("coach.presentation")
+                if practice == nil { cueCard }
+                audioControls
+                if !frames.isEmpty {
+                    Button("Open sequence controls", systemImage: "play.rectangle") { navigation.reveal(.sequence) }
+                        .frame(minHeight: 44)
                 }
             }
-            VStack(alignment: .leading, spacing: 14) {
-                sectionEyebrow("02  SET THE SCENE")
-                ScrollView(.horizontal, showsIndicators: false) {
+            Label("A teaching guide, not match-specific advice.", systemImage: "info.circle")
+                .font(.caption2).foregroundStyle(CoachPalette.muted)
+                .padding(.horizontal, 4).padding(.bottom, 12)
+        }
+    }
+
+    private var scenarioButtons: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
                         ForEach(FieldScenario.allCases) { scenario in
                             Button {
@@ -554,23 +618,76 @@ struct CoachView: View {
                             .accessibilityAddTraits(ball == scenario.point ? .isSelected : [])
                         }
                     }
-                }
-            }
-            .coachCard()
-            .disabled(isPlaying)
-            if practice == nil {
-                cueCard
-                comparisonCard.disabled(isPlaying)
-                aiCard.disabled(isPlaying)
-            } else if practice?.revealed == true { aiCard }
-            pitchSettings
-                .disabled(isPlaying || practice != nil)
-            Label("A teaching guide, not match-specific advice.", systemImage: "info.circle")
-                .font(.caption2)
-                .foregroundStyle(CoachPalette.muted)
-                .padding(.horizontal, 4)
-                .padding(.bottom, 12)
         }
+    }
+
+    private var sceneCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Label("Ball & team scene", systemImage: "slider.horizontal.3").font(.headline)
+            scenarioButtons
+            ballControls.disabled(practice != nil)
+            if !aiPositioning {
+                Toggle("Edit current players", isOn: $showSavedSetup).font(.subheadline)
+                    .disabled(practice != nil)
+            }
+            if aiPositioning || showSavedSetup {
+                Picker("Formation", selection: $formation) {
+                    ForEach(DefensiveFormation.allCases) { Text($0.rawValue).tag($0) }
+                }.pickerStyle(.segmented).disabled(practice != nil)
+                sceneTargetPicker.disabled(practice != nil)
+                selectedPlayerControls.disabled(practice != nil)
+                Text("Five-player defensive unit. White outlines are current players; red markers are opponents.")
+                    .font(.caption).foregroundStyle(CoachPalette.muted)
+            }
+        }.coachCard()
+    }
+
+    @ViewBuilder private var sessionActivity: some View {
+        if practice != nil, navigation.workspace != .practice {
+            VStack(alignment: .leading, spacing: 10) {
+                Label("Practice is active", systemImage: "scope").font(.subheadline.bold())
+                Button("Open practice controls") { navigation.reveal(.practice) }.frame(minHeight: 44)
+                Button("End practice", action: togglePractice).frame(minHeight: 44)
+            }.coachCard()
+        }
+        if isPlaying, navigation.workspace != .plays {
+            VStack(alignment: .leading, spacing: 10) {
+                Label("Sequence playing", systemImage: "play.fill").font(.subheadline.bold())
+                Button("Open sequence controls") { navigation.reveal(.sequence) }.frame(minHeight: 44)
+                Button("Pause sequence", action: pauseSequence).frame(minHeight: 44)
+            }.coachCard()
+        }
+        if drawing, navigation.workspace != .coach {
+            VStack(alignment: .leading, spacing: 10) {
+                Label("Drawing is active", systemImage: "pencil.tip.crop.circle").font(.subheadline.bold())
+                Button("Open route tools") { navigation.reveal(.routes) }.frame(minHeight: 44)
+                Button("Done drawing") { drawing = false }.frame(minHeight: 44)
+            }.coachCard()
+        }
+        if aiPositioning {
+            Label(intelligence.analysis.isBusy ? "AI analysis running" : "AI positioning enabled · experimental",
+                  systemImage: "sparkles").font(.caption).foregroundStyle(CoachPalette.ai)
+            if !intelligence.analysis.isBusy {
+                Text(intelligence.analysis.status).font(.caption).foregroundStyle(CoachPalette.muted)
+            }
+        }
+    }
+
+    @ViewBuilder private var sessionFeedback: some View {
+        if playbook.busy { ProgressView("Updating local playbook...").font(.caption) }
+        if let message = workbenchNotice { Text(message).font(.caption).foregroundStyle(CoachPalette.muted) }
+        ForEach(Array([workbenchError, playbook.error, speech.error, message].compactMap { $0 }.enumerated()), id: \.offset) { _, message in
+            Label(message, systemImage: "exclamationmark.triangle")
+                .font(.caption).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var audioControls: some View {
+        Button(action: speakCue) {
+            Label(speech.speaking ? "Stop spoken coaching" : "Speak coaching cue", systemImage: "speaker.wave.2")
+                .frame(minHeight: 44)
+        }
+        .font(.subheadline).disabled(isPlaying || (practice != nil && practice?.revealed == false))
     }
 
     private var cueCard: some View {
@@ -631,38 +748,19 @@ struct CoachView: View {
     private func openYouthSetup() {
         pauseSequence()
         speech.stop()
+        navigation.reveal(.playbook)
         showingYouthSetup = true
     }
 
     private var workbenchPanel: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Label("Your coaching workbench", systemImage: "books.vertical")
+            Label("Your playbook", systemImage: "books.vertical")
                 .font(.system(.headline, design: .rounded))
             Text("\(playbook.plays.count) saved plays · \(frames.count) sequence steps")
                 .font(.caption).foregroundStyle(CoachPalette.muted)
             ViewThatFits(in: .horizontal) {
                 HStack { libraryButton; saveButton }
                 VStack(alignment: .leading) { libraryButton; saveButton }
-            }
-            Button(action: speakCue) {
-                Label(speech.speaking ? "Stop spoken coaching" : "Speak coaching cue", systemImage: "speaker.wave.2")
-                    .frame(minHeight: 44)
-            }
-            .font(.subheadline)
-            .disabled(isPlaying || (practice != nil && practice?.revealed == false))
-            if !aiPositioning {
-                Toggle("Edit current players", isOn: $showSavedSetup).font(.subheadline)
-                    .disabled(isPlaying || practice != nil)
-                if showSavedSetup {
-                    sceneTargetPicker.disabled(isPlaying || practice != nil)
-                    selectedPlayerControls.disabled(isPlaying || practice != nil)
-                }
-            }
-            if playbook.busy { ProgressView("Updating local playbook...").font(.caption) }
-            if let message = workbenchNotice { Text(message).font(.caption).foregroundStyle(CoachPalette.muted) }
-            ForEach(Array([workbenchError, playbook.error, speech.error].compactMap { $0 }.enumerated()), id: \.offset) { _, message in
-                Label(message, systemImage: "exclamationmark.triangle")
-                    .font(.caption).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
             }
             Text("Local-only playbook. Shared files include your notes and captured steps.")
                 .font(.caption2).foregroundStyle(CoachPalette.muted)
@@ -717,8 +815,8 @@ struct CoachView: View {
 
     private var sequencePanel: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Label("Play the sequence", systemImage: "play.rectangle.on.rectangle").font(.headline)
-            Text("Capture the editable scene at each decision. Save the play to keep its steps between launches.")
+            Label("Captured board sequence", systemImage: "play.rectangle.on.rectangle").font(.headline)
+            Text("Capture the main board at each decision, then save it to keep the steps. For full-team animations, open the playbook designer.")
                 .font(.caption).foregroundStyle(CoachPalette.muted)
             Button("Capture step \(frames.count + 1)", systemImage: "plus.rectangle.on.rectangle", action: captureStep)
                 .frame(minHeight: 44).disabled(frames.count >= 24 || practice != nil || isPlaying)
@@ -798,10 +896,12 @@ struct CoachView: View {
     private func openPlaybook() {
         pauseSequence()
         speech.stop()
+        navigation.reveal(.playbook)
         showingPlaybook = true
     }
 
     private func quickSave() {
+        navigation.reveal(.playbook)
         do {
             try snapshot.validate()
             let play = SavedPlay(title: "\(position.rawValue) - \(formation.rawValue) setup", board: snapshot, frames: frames)
@@ -823,6 +923,7 @@ struct CoachView: View {
             try applyBoard(play.board)
             frames = play.frames
             selectedStep = 0
+            navigation.reveal(frames.isEmpty ? .coach : .sequence)
             workbenchNotice = "Loaded \(play.title). AI responses are regenerated, not treated as saved authority."
             workbenchError = nil
         } catch { workbenchError = "Could not load play: \(error.localizedDescription)" }
@@ -851,6 +952,7 @@ struct CoachView: View {
     }
 
     private func captureStep() {
+        navigation.reveal(.sequence)
         do {
             guard frames.count < 24 else { throw WorkbenchError.invalid("A sequence supports up to 24 steps.") }
             try snapshot.validate()
@@ -915,6 +1017,7 @@ struct CoachView: View {
     }
 
     private func togglePractice() {
+        navigation.reveal(.practice)
         pauseSequence()
         speech.stop()
         invalidateExplanation()
@@ -1066,15 +1169,6 @@ struct CoachView: View {
                 .font(.caption).foregroundStyle(CoachPalette.muted)
                 .fixedSize(horizontal: false, vertical: true)
             if aiPositioning {
-                Picker("Formation", selection: $formation) {
-                    ForEach(DefensiveFormation.allCases) { Text($0.rawValue).tag($0) }
-                }
-                .pickerStyle(.segmented)
-                Text("Five-player defensive unit. Opposition has possession. White outlines show current teammates; red numbers show opponents.")
-                    .font(.caption).foregroundStyle(CoachPalette.muted)
-                    .fixedSize(horizontal: false, vertical: true)
-                sceneTargetPicker
-                selectedPlayerControls
                 Toggle("Analyze after edits", isOn: $autoAnalyze).font(.subheadline)
                 Button(action: positioningAction) {
                     HStack(spacing: 9) {
@@ -1177,6 +1271,7 @@ struct CoachView: View {
     }
 
     private func positioningAction() {
+        navigation.reveal(.analysis)
         if !aiPositioning {
             aiPositioning = true
         } else if intelligence.analysis.isBusy {
@@ -1199,21 +1294,23 @@ struct CoachView: View {
                 Label("Pitch layers", systemImage: "square.3.layers.3d")
                     .font(.subheadline.weight(.medium))
             }
-            Divider().overlay(.white.opacity(0.05))
-            DisclosureGroup {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Distance from your goal").font(.caption).foregroundStyle(CoachPalette.muted)
-                    Slider(value: $ball.depth, in: 0...1, onEditingChanged: { sceneEditing = $0 }) { Text("Ball distance from your goal") }
-                    Text("Left to right").font(.caption).foregroundStyle(CoachPalette.muted)
-                    Slider(value: $ball.width, in: 0...1, onEditingChanged: { sceneEditing = $0 }) { Text("Ball left to right") }
-                }
-                .padding(.top, 14)
-            } label: {
-                Label("Ball controls", systemImage: "slider.horizontal.3")
-                    .font(.subheadline.weight(.medium))
-            }
         }
         .coachCard()
+    }
+
+    private var ballControls: some View {
+        DisclosureGroup {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Distance from your goal").font(.caption).foregroundStyle(CoachPalette.muted)
+                Slider(value: $ball.depth, in: 0...1, onEditingChanged: { sceneEditing = $0 }) { Text("Ball distance from your goal") }
+                Text("Left to right").font(.caption).foregroundStyle(CoachPalette.muted)
+                Slider(value: $ball.width, in: 0...1, onEditingChanged: { sceneEditing = $0 }) { Text("Ball left to right") }
+            }
+            .padding(.top, 14)
+        } label: {
+            Label("Ball controls", systemImage: "slider.horizontal.3")
+                .font(.subheadline.weight(.medium))
+        }
     }
 
     private func duoBadge(_ mode: CoachingLayout.Mode) -> some View {

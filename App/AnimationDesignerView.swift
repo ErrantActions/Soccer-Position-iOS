@@ -23,6 +23,9 @@ struct AnimationDesignerView: View {
     @State private var showPaths = true
     @State private var preview: SavedPlay?
     @State private var audienceOwner = UUID()
+    @State private var workspace: DesignerWorkspace = .phases
+    @State private var helpExpanded = false
+    @State private var presentationExpanded = false
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.scenePhase) private var scenePhase
@@ -98,6 +101,7 @@ struct AnimationDesignerView: View {
         .onDisappear { finishGesture(); FieldPresentation.shared.finishAnimation(owner: audienceOwner) }
         .onChange(of: preview?.id) { if preview == nil { publish() } }
         .onChange(of: scenePhase) { if scenePhase != .active { finishGesture() } }
+        .onChange(of: workspace) { finishGesture() }
     }
 
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
@@ -117,9 +121,9 @@ struct AnimationDesignerView: View {
             Menu {
                 Button("Capture next phase", systemImage: "plus.rectangle.on.rectangle", action: capturePhase)
                     .disabled(!canInsert)
-                Button("Add lime player") { edit { try $0.addPlayer(team: .home) } }
+                Button("Add lime player") { addPlayer(team: .home) }
                     .disabled(draft?.canAddPlayer(team: .home) != true)
-                Button("Add red player") { edit { try $0.addPlayer(team: .away) } }
+                Button("Add red player") { addPlayer(team: .away) }
                     .disabled(draft?.canAddPlayer(team: .away) != true)
                 Toggle("Movement guides", isOn: $showPaths)
             } label: { Label("Designer actions", systemImage: "ellipsis") }
@@ -146,18 +150,29 @@ struct AnimationDesignerView: View {
 
     private var controls: some View {
         VStack(alignment: .leading, spacing: 18) {
-            VStack(alignment: .leading, spacing: 10) {
-                Label("MAKE IT YOUR PLAY", systemImage: "pencil.and.outline").font(.headline)
-                Text("Set phase 1, select phase 2 and move players or the ball. Between phases, players run and the ball travels automatically. Capture more phases to add bends, passes and decisions.")
-                    .font(.caption).foregroundStyle(CoachPalette.muted)
-                Text("Tap a marker to select it; drag it, or use the selected item's coordinate sliders. Dashed guides show movement into the current phase.")
-                    .font(.caption).foregroundStyle(CoachPalette.muted)
-            }.coachCard()
+            WorkspacePicker(selection: $workspace, symbol: { $0.symbol })
+            if workspace == .phases {
+                ExpandableToolGroup("How to design a play", systemImage: "questionmark.circle", expanded: $helpExpanded) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Label("MAKE IT YOUR PLAY", systemImage: "pencil.and.outline").font(.headline)
+                        Text("Set phase 1, select phase 2 and move players or the ball. Between phases, players run and the ball travels automatically. Capture more phases to add bends, passes and decisions.")
+                            .font(.caption).foregroundStyle(CoachPalette.muted)
+                        Text("Tap a marker to select it; drag it, or use the selected item's coordinate sliders. Dashed guides show movement into the current phase.")
+                            .font(.caption).foregroundStyle(CoachPalette.muted)
+                    }.coachCard()
+                }
+            }
             if let draft {
-                teamPanel(draft)
-                phasePanel(draft)
-                selectionPanel(draft)
-                metadataPanel
+                switch workspace {
+                case .phases: phasePanel(draft)
+                case .players: selectionPanel(draft)
+                case .setup: teamPanel(draft)
+                case .details:
+                    metadataPanel
+                    ExpandableToolGroup("Presentation & TV", systemImage: "tv", expanded: $presentationExpanded) {
+                        PresenterControls()
+                    }
+                }
             }
             if let message = error {
                 Label(message, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.orange)
@@ -171,7 +186,6 @@ struct AnimationDesignerView: View {
             Button(action: showPreview) { Label("Preview this play", systemImage: "play.rectangle").frame(minHeight: 44) }
                 .buttonStyle(.borderedProminent).foregroundStyle(CoachPalette.ink)
                 .disabled(validation != nil || busy)
-            PresenterControls()
             Text("Save to keep your work. Undo/redo covers field edits, roster, timing, category and phase cues. Name and notes use normal text editing. A custom play is an illustration, not a verified tactical or rights assessment.")
                 .font(.caption2).foregroundStyle(CoachPalette.muted)
         }
@@ -317,10 +331,16 @@ struct AnimationDesignerView: View {
     }
 
     private func capturePhase() {
+        workspace = .phases
         edit { draft in
             let seconds = min(2, 120 - draft.animation.duration)
             try draft.insertPhase(duration: seconds)
         }
+    }
+
+    private func addPlayer(team: AnimationTeam) {
+        workspace = .players
+        edit { try $0.addPlayer(team: team) }
     }
 
     private func candidate() throws -> SavedPlay {

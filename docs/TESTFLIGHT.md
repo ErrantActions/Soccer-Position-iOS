@@ -1,5 +1,35 @@
 # CoachAI publication and TestFlight runbook
 
+## Organized controls device checks
+
+The main controls now use Coach, Plays, Practice and Present groups. The designer
+uses Phases, Players, Setup and Details. Optional drawing/AI/help/presentation/
+source panels expand on demand; the native toolbar and data models are retained.
+This changes navigation and information hierarchy, not stored play schemas,
+AI coordinates, pitch dimensions, signing capabilities or permissions.
+
+On the phone/Duo:
+
+- Visit every main group; compare the README control map with the actual actions.
+  Confirm ball/player/formation edits, comparison and pitch layers are in Coach,
+  while library/youth/sequence controls are in Plays.
+- Use native Draw/Analyze/More shortcuts from another group; ensure the relevant
+  group opens and the action still works. Compact Draw should focus the pitch;
+  Duo should keep the pitch fixed while the control pane focuses the tool.
+- Start practice, switch to Present/Coach, verify the answer remains hidden and
+  active-mode/end controls remain available. End/check/next must preserve the
+  intended rules. Sequence playback similarly retains a visible pause route.
+- Confirm AI/storage/audio failures remain readable when their panels are folded
+  or a different group is selected. Group selection must not initiate analysis.
+- In the designer, switch among phases/players/setup/details while editing.
+  Capture/add-player toolbar actions should reveal the correct group; draft,
+  undo/redo, validation, unsaved protection, preview and save must still work.
+- Expand the play viewer's notes/sources and TV controls; check all row-menu
+  actions. Connect a display and verify presentation options open automatically.
+- Use narrow windows, accessibility text, fold/tabletop layouts and rotation.
+  Verify readable group selectors, all four main native controls and field-only
+  audience privacy. No collapsing navigation title should reappear.
+
 ## External TV readability release: build 13
 
 Source commit `af7a6026be69bed64fe653875da61a744bbf86a7` passed **170 portable

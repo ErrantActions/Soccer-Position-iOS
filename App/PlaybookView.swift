@@ -173,41 +173,49 @@ struct PlaybookView: View {
             .buttonStyle(.plain)
             .accessibilityLabel("\(play.animation == nil ? "Load" : "Show animated play") \(play.title)")
             Menu {
-                Button(play.animation == nil ? "Load setup" : "Show animated play", systemImage: "play.rectangle") { open(play) }
-                if play.animation != nil {
-                    Button(example ? "Customize an editable copy" : "Edit animation", systemImage: "pencil.and.outline") {
-                        var editable = play
-                        if example {
-                            editable.id = UUID()
-                            editable.title = String((play.title + " custom").prefix(80))
-                            editable.created = Date()
-                            editable.updated = Date()
+                Section("Open & edit") {
+                    Button(play.animation == nil ? "Load setup" : "Show animated play", systemImage: "play.rectangle") { open(play) }
+                    if play.animation != nil {
+                        Button(example ? "Customize an editable copy" : "Edit animation", systemImage: "pencil.and.outline") {
+                            var editable = play
+                            if example {
+                                editable.id = UUID()
+                                editable.title = String((play.title + " custom").prefix(80))
+                                editable.created = Date()
+                                editable.updated = Date()
+                            }
+                            designing = editable
                         }
-                        designing = editable
+                        .disabled(!store.writable || !store.loaded)
                     }
-                    .disabled(!store.writable || !store.loaded)
-                }
-                if !example {
-                    Button("Edit name and notes", systemImage: "square.and.pencil") { editing = play }
-                    Button(play.favorite ? "Remove favorite" : "Favorite", systemImage: play.favorite ? "star.slash" : "star") {
-                        var changed = play
-                        changed.favorite.toggle()
-                        Task { await store.save(changed) }
+                    if !example {
+                        Button("Edit name and notes", systemImage: "square.and.pencil") { editing = play }
                     }
                 }
-                Button(example ? "Save a copy" : "Duplicate play", systemImage: "doc.on.doc") {
-                    var copy = play
-                    copy.id = UUID()
-                    copy.title = String((play.title + " copy").prefix(80))
-                    copy.created = Date()
-                    copy.updated = Date()
-                    Task { await store.save(copy) }
+                Section("Organize") {
+                    if !example {
+                        Button(play.favorite ? "Remove favorite" : "Favorite", systemImage: play.favorite ? "star.slash" : "star") {
+                            var changed = play
+                            changed.favorite.toggle()
+                            Task { await store.save(changed) }
+                        }
+                    }
+                    Button(example ? "Save a copy" : "Duplicate play", systemImage: "doc.on.doc") {
+                        var copy = play
+                        copy.id = UUID()
+                        copy.title = String((play.title + " copy").prefix(80))
+                        copy.created = Date()
+                        copy.updated = Date()
+                        Task { await store.save(copy) }
+                    }
                 }
-                ShareLink(item: PlayFileShare(play: play), preview: SharePreview(play.title)) {
-                    Label("Share editable play file", systemImage: "square.and.arrow.up")
-                }
-                ShareLink(item: PlayDiagramShare(play: play), preview: SharePreview(play.title)) {
-                    Label("Share field diagram (SVG)", systemImage: "photo")
+                Section("Share") {
+                    ShareLink(item: PlayFileShare(play: play), preview: SharePreview(play.title)) {
+                        Label("Share editable play file", systemImage: "square.and.arrow.up")
+                    }
+                    ShareLink(item: PlayDiagramShare(play: play), preview: SharePreview(play.title)) {
+                        Label("Share field diagram (SVG)", systemImage: "photo")
+                    }
                 }
             } label: {
                 Image(systemName: "ellipsis.circle").font(.title3).frame(width: 44, height: 44)

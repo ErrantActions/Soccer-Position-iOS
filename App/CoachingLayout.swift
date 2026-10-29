@@ -24,6 +24,10 @@ struct CoachingLayout: Equatable {
         return usesDuoControls || coachPane.width >= 300 ? 22 : 14
     }
 
+    static func toolColumns(width: CGFloat, largeText: Bool) -> Int {
+        largeText || width < 280 ? 1 : 2
+    }
+
     static func resolve(
         size: CGSize, division: CGRect?, largeText: Bool = false, duoDisplay: Bool = false
     ) -> CoachingLayout {
