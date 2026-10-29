@@ -71,6 +71,9 @@ unknown-label diagnostic; do not suppress other diagnostics.
 ## Apple identity and credentials
 
 Display name: **CoachAI**. Bundle ID: **com.errantactions.soccerposition**.
+App Store Connect/TestFlight name: **CoachAI Soccer Positions**,
+[app 6828213509](https://appstoreconnect.apple.com/apps/6828213509).
+The shorter store name was already taken; the on-device display name is unchanged.
 Marketing version currently `1.0` in [project.yml](../project.yml); confirm this
 against the app record before the first release. No Frigate identifiers or
 capabilities are reused. The Apple team ID is an environment variable, not source.
@@ -79,8 +82,8 @@ Owner prerequisites:
 
 1. Active Apple Developer membership and accepted agreements.
 2. Explicit registered App ID for the exact bundle ID, no extra capabilities.
-3. An App Store Connect iOS app record using that App ID and an available name.
-   Confirm whether the proposed CoachAI app already exists.
+3. Access to the existing CoachAI Soccer Positions app record above. It was created
+   using the exact soccer bundle ID; do not create a duplicate record.
 4. Valid Apple Distribution `.p12` including its private key; it may be reused
    from the same Apple team if valid and permitted by the new app's profile.
 5. A new/matching **App Store Connect distribution provisioning profile** for
@@ -180,21 +183,35 @@ tests do not establish model availability.
 
 No public App Store release is submitted by these workflows.
 
-## Initial handoff status (2026-10-28)
+## Publication and signing handoff (2026-10-28)
 
-- Independent private staging repository created; public transition is awaiting
-  explicit owner approval after the new-source audit.
-- Default Actions token verified read-only, with PR approval disabled.
-- `app-store` exists but has **no effective required-reviewer or branch rules**:
-  GitHub rejected required reviewers on the private staging plan. No signing
-  secrets were uploaded. Secret scanning/push protection were also unavailable
-  for private staging. These must be configured and verified after approved
-  publication, before any credential upload.
-- Apple membership/team was verified interactively, but the team ID was not put
-  in source. No CoachAI app appeared in the signed-in account's visible app list.
-  App registration, profile selection and credential upload remain owner actions.
-- Local Python/Node guard tests, plist checks, generated-icon checks, shell syntax,
-  PowerShell parsing and workflow validation were performed. The workflow validator
-  required the documented Xcode 27 preview-label exception.
-- No Xcode compilation, simulator execution, signed archive, TestFlight upload,
-  Apple processing or physical iPhone installation has been verified.
+- The owner explicitly approved publication. The repository is public and not a
+  fork, with a new noreply-authored root and no imported upstream ancestry.
+  Push only `main`; never mirror local editor/agent checkpoint refs.
+- Secret scanning and push protection are enabled; the alert list was empty.
+  Default Actions token permissions are read-only, with PR approval disabled.
+- Effective `app-store` rules were read back: the sole required reviewer is
+  `ErrantActions`, only the branch `main` may deploy, and admin bypass is disabled.
+  No signing secrets were uploaded. Keep these rules intact during secret upload.
+- Apple membership/team was verified interactively and `APPLE_TEAM_ID` was saved
+  only as an environment variable, not in source.
+- The explicit soccer App ID and CoachAI Soccer Positions app record were created.
+  A matching **CoachAI App Store Distribution** profile was generated using the
+  team's existing valid distribution certificate. The portal reports expiry
+  2027-10-27. No existing certificate was revoked or replaced.
+- The profile is available in Apple Developer > Profiles; local download/upload
+  is still needed. The certificate's original `.p12` with private key and password,
+  plus an App Store Connect upload `.p8`, must be supplied through the secure local
+  helper. They cannot be recovered from existing encrypted GitHub secrets.
+- Eleven local Python/Node guard tests and the PowerShell owner-review/admin-bypass
+  tests passed, along with plist/icon, shell, Python, PowerShell and workflow checks.
+  The workflow validator required the documented Xcode 27 preview-label exception.
+- The first manual unsigned Xcode validation was requested against
+  `16f3c06e0149df68941d072a85ed5cc0e53edfa7`:
+  [native validation run](https://github.com/ErrantActions/Soccer-Position-iOS/actions/runs/40792436312).
+  Consult its actual result rather than treating local Windows checks as proof.
+  It uses the standard `xcode-27` runner and requests no artifacts or signing secrets.
+- The TestFlight tab was verified to show **Submit a build to start testing**.
+  No signed archive, TestFlight upload, Apple processing or physical iPhone
+  installation has been verified. After credentials are ready, run TestFlight
+  directly for the release candidate; do not add a duplicate simulator run.

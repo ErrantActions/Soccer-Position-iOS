@@ -5,6 +5,10 @@ Designed for iOS 26+ with compact, landscape, iPad and expanded Duo layouts.
 The same ball and position state survive width changes; wider windows show the
 pitch and controls side by side. Physical folding behavior still requires device testing.
 
+The App Store Connect/TestFlight record is **CoachAI Soccer Positions**
+([app 6828213509](https://appstoreconnect.apple.com/apps/6828213509)).
+Apple's store name "CoachAI" was unavailable; the on-device display name remains CoachAI.
+
 - Drag the ball, select LB / LCB / RCB / RB / CDM, and see a deterministic suggestion.
 - Optional position heat spot and goal-side guide; accessible ball sliders.
 - Apple Foundation Models can explain the teaching cue on supported devices.
