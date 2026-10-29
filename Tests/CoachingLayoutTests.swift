@@ -1,3 +1,4 @@
+import CoreGraphics
 import XCTest
 #if canImport(CoachAI)
 @testable import CoachAI
