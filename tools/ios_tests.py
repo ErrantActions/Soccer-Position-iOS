@@ -66,6 +66,7 @@ def test_devices(devices: list[dict]) -> None:
             run_command(["xcrun", "simctl", "bootstatus", identifier, "-b"], 150, f"Waiting for {device['name']} readiness")
             run_command(
                 ["xcodebuild", "test-without-building", *common,
+                 "-only-testing:CoachAITests",
                  "-destination", f"platform=iOS Simulator,id={identifier}",
                  "-destination-timeout", "60", "-parallel-testing-enabled", "NO",
                  "-test-timeouts-enabled", "YES",

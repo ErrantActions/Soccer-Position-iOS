@@ -7,7 +7,7 @@ final class ToolbarSmokeTests: XCTestCase {
         let app = XCUIApplication()
         defer {
             let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
-            screenshot.name = "Duo toolbar final state"
+            screenshot.name = "Native toolbar final state"
             screenshot.lifetime = .keepAlways
             add(screenshot)
             app.terminate()
@@ -48,7 +48,7 @@ final class ToolbarSmokeTests: XCTestCase {
                 return
             }
             let screenshot = XCTAttachment(screenshot: app.screenshot())
-            screenshot.name = orientation == .portrait ? "Duo toolbar portrait" : "Duo toolbar landscape"
+            screenshot.name = orientation == .portrait ? "Native toolbar portrait" : "Native toolbar landscape"
             screenshot.lifetime = .keepAlways
             add(screenshot)
         }

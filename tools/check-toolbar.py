@@ -25,6 +25,13 @@ def toolbar_test_command(identifier: str, results: Path, action: str = "test-wit
     return command
 
 
+def select_toolbar_device(data: dict, sdk: str, kind: str) -> dict:
+    if kind not in ("duo", "compatible"):
+        raise ValueError("TOOLBAR_CHECK_DEVICE must be duo or compatible.")
+    devices = select_devices(data, sdk)
+    return next(device for device in devices if ("Duo" in device["name"]) == (kind == "duo"))
+
+
 def main() -> None:
     if sys.platform != "darwin":
         raise ValueError("The rendered toolbar check requires macOS and Xcode.")
@@ -36,31 +43,45 @@ def main() -> None:
     data = json.loads(subprocess.check_output(
         ["xcrun", "simctl", "list", "devices", "available", "--json"], text=True, timeout=30
     ))
-    device = next(device for device in select_devices(data, sdk) if "Duo" in device["name"])
+    device = select_toolbar_device(data, sdk, os.environ.get("TOOLBAR_CHECK_DEVICE", "duo"))
+    print(f"Native toolbar UI check: {device['name']} ({device['runtime']}).", flush=True)
     identifier = device["udid"]
     results = root / "build" / "Toolbar.xcresult"
     screenshots = root / "build" / "ToolbarScreenshots"
     started = False
+    failure: RuntimeError | OSError | None = None
     try:
+        run_command(toolbar_test_command(identifier, results, "build-for-testing"), 600, "Building the focused toolbar UI check before booting the simulator")
         if device.get("state") != "Booted":
-            run_command(["xcrun", "simctl", "boot", identifier], 30, "Booting the Duo UI-check simulator")
+            run_command(["xcrun", "simctl", "boot", identifier], 30, "Booting the selected UI-check simulator")
             started = True
-        run_command(["xcrun", "simctl", "bootstatus", identifier, "-b"], 150, "Waiting for Duo simulator readiness")
-        run_command(toolbar_test_command(identifier, results, "build-for-testing"), 600, "Building the focused toolbar UI check")
+        run_command(["xcrun", "simctl", "bootstatus", identifier, "-b"], 150, "Waiting for simulator readiness")
         run_command(toolbar_test_command(identifier, results), 540, "Checking visible native toolbar controls and their drawing action")
+    except (RuntimeError, OSError) as error:
+        failure = error
     finally:
-        try:
-            if started:
+        if started:
+            try:
                 run_command(["xcrun", "simctl", "shutdown", identifier], 30, "Shutting down the UI-check simulator")
-        finally:
-            if results.exists():
+            except (RuntimeError, OSError) as error:
+                print(f"UI-check cleanup also failed: {error}", file=sys.stderr)
+                if failure is None:
+                    failure = error
+        if results.exists():
+            try:
                 run_command([
                     "xcrun", "xcresulttool", "export", "attachments",
                     "--path", str(results), "--output-path", str(screenshots),
                 ], 90, "Exporting only toolbar screenshot attachments")
+            except (RuntimeError, OSError) as error:
+                print(f"UI-check screenshot export also failed: {error}", file=sys.stderr)
+                if failure is None:
+                    failure = error
+    if failure is not None:
+        raise failure
     if not any(screenshots.rglob("*.png")):
         raise RuntimeError("The UI check did not produce its required screenshot evidence.")
-    print("Native toolbar actions rendered and drawing toggled in Duo portrait and landscape.")
+    print(f"Native toolbar actions rendered and drawing toggled on {device['name']} in portrait and landscape.")
 
 
 if __name__ == "__main__":

@@ -122,6 +122,7 @@ class SimulatorTests(unittest.TestCase):
         for command in test_commands:
             self.assertEqual(command.count("-destination"), 1)
             self.assertIn("-test-timeouts-enabled", command)
+            self.assertIn("-only-testing:CoachAITests", command)
         self.assertIn(["xcrun", "simctl", "shutdown", "compact"], commands)
         self.assertNotIn(["xcrun", "simctl", "shutdown", "duo"], commands)
 
@@ -389,6 +390,39 @@ class ToolbarCheckTests(unittest.TestCase):
         self.assertIn("-resultBundlePath", test)
         with self.assertRaises(ValueError):
             self.module.toolbar_test_command("synthetic-duo", results, "test")
+
+    def test_device_fallback_is_explicit_not_a_silent_duo_success(self):
+        data = {"devices": {
+            "com.apple.CoreSimulator.SimRuntime.iOS-27-0": [
+                {"name": "iPhone 18", "isAvailable": True, "udid": "compatible"},
+            ],
+            "com.apple.CoreSimulator.SimRuntime.iOS-27-1": [
+                {"name": "iPhone Duo", "isAvailable": True, "udid": "duo"},
+            ],
+        }}
+        self.assertEqual(self.module.select_toolbar_device(data, "27.1", "duo")["udid"], "duo")
+        self.assertEqual(self.module.select_toolbar_device(data, "27.1", "compatible")["udid"], "compatible")
+        with self.assertRaises(ValueError):
+            self.module.select_toolbar_device(data, "27.1", "unknown")
+
+    def test_cleanup_failure_does_not_hide_primary_readiness_failure(self):
+        data = {"devices": {"com.apple.CoreSimulator.SimRuntime.iOS-27-1": [
+            {"name": "iPhone Duo", "isAvailable": True, "udid": "duo", "state": "Shutdown"},
+            {"name": "iPhone 18", "isAvailable": True, "udid": "compatible"},
+        ]}}
+        def execute(command, timeout, label):
+            if "bootstatus" in command:
+                raise RuntimeError("primary readiness error")
+            if "shutdown" in command:
+                raise RuntimeError("secondary shutdown error")
+        with patch.object(self.module.sys, "platform", "darwin"), \
+             patch.object(self.module.os, "chdir"), \
+             patch.object(self.module.subprocess, "check_output", side_effect=["27.1", json.dumps(data)]), \
+             patch.object(self.module, "run_command", side_effect=execute), \
+             patch.object(Path, "exists", return_value=False), \
+             patch.dict(os.environ, {"TOOLBAR_CHECK_DEVICE": "duo"}):
+            with self.assertRaisesRegex(RuntimeError, "primary readiness error"):
+                self.module.main()
 
 
 if __name__ == "__main__":
