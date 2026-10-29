@@ -1,0 +1,145 @@
+import SwiftUI
+
+struct PitchView: View {
+    @Binding var ball: FieldPoint
+    @Binding var routes: [[FieldPoint]]
+    @Binding var draft: [FieldPoint]
+    let role: Position
+    let comparison: Position?
+    let showHeat: Bool
+    let showGuides: Bool
+    let drawing: Bool
+    let horizontal: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var recommendation: Recommendation { Positioning.recommend(ball: ball, position: role) }
+
+    var body: some View {
+        GeometryReader { geometry in
+            let projection = PitchProjection(size: geometry.size, horizontal: horizontal)
+            ZStack {
+                RoundedRectangle(cornerRadius: 22)
+                    .fill(LinearGradient(
+                        colors: [Color(red: 0.09, green: 0.28, blue: 0.22), Color(red: 0.04, green: 0.17, blue: 0.14)],
+                        startPoint: .topLeading, endPoint: .bottomTrailing
+                    ))
+                Canvas { context, size in
+                    drawField(context: &context, projection: projection)
+                    if showGuides {
+                        var line = Path()
+                        line.move(to: projection.location(ball))
+                        line.addLine(to: projection.location(recommendation.point))
+                        line.addLine(to: projection.location(FieldPoint(depth: 0, width: 0.5)))
+                        context.stroke(line, with: .color(CoachPalette.lime.opacity(0.65)),
+                                       style: StrokeStyle(lineWidth: 1.4, dash: [4, 6]))
+                    }
+                    for route in routes + (draft.isEmpty ? [] : [draft]) {
+                        drawRoute(route, context: &context, projection: projection)
+                    }
+                }
+                if showHeat {
+                    Ellipse()
+                        .fill(RadialGradient(colors: [CoachPalette.lime.opacity(0.3), .clear], center: .center, startRadius: 0, endRadius: 75))
+                        .frame(width: 155, height: 155)
+                        .position(projection.location(recommendation.point))
+                        .allowsHitTesting(false)
+                }
+                if let comparison {
+                    marker(comparison, color: CoachPalette.blue, secondary: true)
+                        .position(projection.location(Positioning.recommend(ball: ball, position: comparison).point))
+                }
+                marker(role, color: CoachPalette.lime, secondary: false)
+                    .position(projection.location(recommendation.point))
+                    .animation(reduceMotion ? nil : .smooth(duration: 0.15), value: ball)
+                Image(systemName: "soccerball")
+                    .font(.system(size: 27, weight: .medium))
+                    .foregroundStyle(.white, Color.black.opacity(0.85))
+                    .padding(7)
+                    .background(.black.opacity(0.25), in: Circle())
+                    .overlay(Circle().strokeBorder(.white.opacity(0.25), lineWidth: 1))
+                    .shadow(color: .black.opacity(0.4), radius: 5, y: 3)
+                    .position(projection.location(ball))
+            }
+            .overlay(RoundedRectangle(cornerRadius: 22).strokeBorder(.white.opacity(0.09), lineWidth: 1))
+            .clipShape(RoundedRectangle(cornerRadius: 22))
+            .contentShape(Rectangle())
+            .gesture(DragGesture(minimumDistance: 0)
+                .onChanged { value in
+                    let point = projection.fieldPoint(value.location)
+                    if drawing {
+                        draft.append(point)
+                    } else {
+                        ball = point
+                    }
+                }
+                .onEnded { _ in
+                    if draft.count > 1 { routes.append(draft) }
+                    draft = []
+                })
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Soccer pitch. \(role.label). \(recommendation.cue)")
+            .accessibilityHint("Use Ball controls below to move the ball with VoiceOver.")
+        }
+    }
+
+    private func marker(_ role: Position, color: Color, secondary: Bool) -> some View {
+        Text(role.rawValue)
+            .font(.system(.caption, design: .rounded, weight: .heavy))
+            .foregroundStyle(secondary ? color : CoachPalette.ink)
+            .frame(width: 38, height: 38)
+            .background(secondary ? CoachPalette.ink : color, in: Circle())
+            .overlay(Circle().strokeBorder(secondary ? color : .white.opacity(0.7), lineWidth: 2))
+            .padding(5)
+            .background(color.opacity(0.12), in: Circle())
+            .shadow(color: color.opacity(0.25), radius: 12, y: 2)
+            .allowsHitTesting(false)
+    }
+
+    private func drawField(context: inout GraphicsContext, projection: PitchProjection) {
+        let field = projection.bounds
+        for index in 0..<10 where index.isMultiple(of: 2) {
+            let stripe = projection.horizontal
+                ? CGRect(x: field.minX + CGFloat(index) * field.width / 10, y: field.minY, width: field.width / 10, height: field.height)
+                : CGRect(x: field.minX, y: field.minY + CGFloat(index) * field.height / 10, width: field.width, height: field.height / 10)
+            context.fill(Path(stripe), with: .color(.white.opacity(0.025)))
+        }
+        var lines = Path()
+        lines.addRoundedRect(in: field, cornerSize: CGSize(width: 2, height: 2))
+        lines.move(to: projection.location(FieldPoint(depth: 0.5, width: 0)))
+        lines.addLine(to: projection.location(FieldPoint(depth: 0.5, width: 1)))
+        let center = projection.location(FieldPoint(depth: 0.5, width: 0.5))
+        let radius = min(field.width, field.height) * 0.14
+        lines.addEllipse(in: CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2))
+        for depth in [0.0, 1.0] {
+            for (boxDepth, boxWidth) in [(0.16, 0.64), (0.055, 0.3)] {
+                let start = projection.location(FieldPoint(depth: depth, width: (1 - boxWidth) / 2))
+                let end = projection.location(FieldPoint(depth: depth == 0 ? boxDepth : 1 - boxDepth, width: (1 + boxWidth) / 2))
+                lines.addRect(CGRect(x: min(start.x, end.x), y: min(start.y, end.y), width: abs(end.x - start.x), height: abs(end.y - start.y)))
+            }
+            let spot = projection.location(FieldPoint(depth: depth == 0 ? 0.115 : 0.885, width: 0.5))
+            context.fill(Path(ellipseIn: CGRect(x: spot.x - 2, y: spot.y - 2, width: 4, height: 4)), with: .color(.white.opacity(0.5)))
+        }
+        context.stroke(lines, with: .color(.white.opacity(0.37)), lineWidth: 1.2)
+        context.fill(Path(ellipseIn: CGRect(x: center.x - 2, y: center.y - 2, width: 4, height: 4)), with: .color(.white.opacity(0.65)))
+        var goal = Path()
+        goal.move(to: projection.location(FieldPoint(depth: 0, width: 0.4)))
+        goal.addLine(to: projection.location(FieldPoint(depth: 0, width: 0.6)))
+        context.stroke(goal, with: .color(CoachPalette.lime), style: StrokeStyle(lineWidth: 4, lineCap: .round))
+    }
+
+    private func drawRoute(_ points: [FieldPoint], context: inout GraphicsContext, projection: PitchProjection) {
+        guard let first = points.first, let last = points.last, points.count > 1 else { return }
+        var path = Path()
+        path.move(to: projection.location(first))
+        for point in points.dropFirst() { path.addLine(to: projection.location(point)) }
+        context.stroke(path, with: .color(.white.opacity(0.9)), style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+        let end = projection.location(last)
+        let previous = projection.location(points[max(0, points.count - 4)])
+        let angle = atan2(end.y - previous.y, end.x - previous.x)
+        var arrow = Path()
+        arrow.move(to: CGPoint(x: end.x - 10 * cos(angle - 0.5), y: end.y - 10 * sin(angle - 0.5)))
+        arrow.addLine(to: end)
+        arrow.addLine(to: CGPoint(x: end.x - 10 * cos(angle + 0.5), y: end.y - 10 * sin(angle + 0.5)))
+        context.stroke(arrow, with: .color(.white), style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+    }
+}

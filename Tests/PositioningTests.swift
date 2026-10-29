@@ -1,5 +1,9 @@
 import XCTest
+#if canImport(CoachAI)
 @testable import CoachAI
+#else
+@testable import CoachCore
+#endif
 
 final class PositioningTests: XCTestCase {
     func testEveryPositionStaysInsideItsBounds() {

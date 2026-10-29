@@ -186,7 +186,10 @@ tests do not establish model availability.
 
 1. Publish only after owner approval and repository/security verification.
 2. For routine unsigned validation: Actions > Simulator validation > main >
-   confirm. This compiles/tests; it does not sign or upload.
+   confirm. This compiles/tests; it does not sign or upload. To avoid launching
+   simulators, disable **Execute compact and Duo simulators**: the workflow still
+   runs portable Swift positioning/layout tests and compiles the full native app
+   and iOS test bundle. It does not claim simulator execution or device testing.
 3. For a release candidate: Actions > TestFlight > main > confirm upload.
    **Do not run a duplicate simulator workflow first**. Simulator tests default on;
    disable **Run simulator tests** for the owner-approved physical-phone path.

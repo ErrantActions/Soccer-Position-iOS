@@ -3,10 +3,15 @@ on:
   workflow_dispatch:
     inputs:
       confirm:
-        description: Run unsigned builds and tests on compact and Duo simulators
+        description: Run unsigned native validation (no signing or upload)
         type: boolean
         required: true
         default: false
+      run_simulator_tests:
+        description: Execute compact and Duo simulators (disable to compile and run portable core tests only)
+        type: boolean
+        required: true
+        default: true
       upload_app:
         description: Save only the unsigned simulator app for one day (no logs)
         type: boolean
@@ -38,10 +43,20 @@ jobs:
           pwsh -NoProfile -File tools/tests/test-upload-guards.ps1
       - name: Install declared project generator
         run: brew bundle --file Brewfile
+      - name: Test positioning, fold layout and pitch coordinates without a simulator
+        run: swift test
       - name: Generate project
         run: bash tools/prepare-ios.sh
       - name: Build and test both simulator sizes
+        if: inputs.run_simulator_tests
         run: bash tools/test-ios.sh
+      - name: Compile app and native test bundle without launching a simulator
+        if: ${{ !inputs.run_simulator_tests }}
+        run: |
+          xcodebuild build-for-testing -project CoachAI.xcodeproj -scheme CoachAI \
+            -configuration Debug -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO DEVELOPMENT_TEAM=
       - name: Optional unsigned simulator app
         if: success() && inputs.upload_app
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
