@@ -1,5 +1,11 @@
 # CoachAI delivery preferences
 
+- The owner authorizes cohesive feature, design and reliability improvements with
+  reasonable product decisions made autonomously. Deliver working features, not
+  placeholders, and preserve the true pitch geometry and Duo interaction model.
+  This does not authorize billing changes, secret disclosure, destructive history
+  edits or public App Store submission.
+
 - The owner has standing authorization to deploy completed, verified app changes
   to TestFlight. Include deployment in the task; do not stop at "ready to deploy"
   or request a separate approval each time. Respect any later instruction to pause.

@@ -1,6 +1,6 @@
 import Foundation
 
-struct FieldPoint: Equatable, Sendable {
+struct FieldPoint: Codable, Equatable, Sendable {
     var depth: Double
     var width: Double
 
@@ -9,7 +9,7 @@ struct FieldPoint: Equatable, Sendable {
     }
 }
 
-enum Position: String, CaseIterable, Identifiable, Sendable {
+enum Position: String, Codable, CaseIterable, Identifiable, Sendable {
     case lb = "LB", lcb = "LCB", rcb = "RCB", rb = "RB", cdm = "CDM"
     var id: String { rawValue }
     var label: String {

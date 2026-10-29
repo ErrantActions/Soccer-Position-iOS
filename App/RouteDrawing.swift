@@ -86,6 +86,24 @@ struct RouteDrawing {
         undone = []
     }
 
+    static func validateSavedRoutes(_ routes: [[FieldPoint]]) throws {
+        guard routes.count <= 100, routes.reduce(0, { $0 + $1.count }) <= 20_000 else {
+            throw WorkbenchError.invalid("This board has too many route points to save safely.")
+        }
+        guard routes.allSatisfy({ route in
+            route.count >= 2 && route.allSatisfy {
+                $0.depth.isFinite && $0.width.isFinite && (0...1).contains($0.depth) && (0...1).contains($0.width)
+            }
+        }) else { throw WorkbenchError.invalid("A saved route has invalid coordinates.") }
+    }
+
+    mutating func restore(_ routes: [[FieldPoint]]) throws {
+        try Self.validateSavedRoutes(routes)
+        cancelStroke()
+        self.routes = routes
+        undone = []
+    }
+
     static func nearestAnchor(to point: FieldPoint, anchors: [FieldPoint], projection: PitchProjection) -> FieldPoint? {
         let nearest = anchors.min {
             distance(point, $0, projection: projection) < distance(point, $1, projection: projection)

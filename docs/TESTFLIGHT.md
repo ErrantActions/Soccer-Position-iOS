@@ -1,5 +1,34 @@
 # CoachAI publication and TestFlight runbook
 
+## Coaching workbench device checks
+
+The workbench adds local named plays, notes/favorites, JSON import/share, SVG
+diagrams, decision-step capture/playback, positioning practice and manual spoken
+cues. It needs no new capabilities or microphone/photo permissions. App-managed
+network requests, tracking and cloud AI remain absent. Application Support data
+can be included in the owner's system backups; explicit sharing exports notes.
+
+Portable tests cover validation limits, roundtrips, actual repository writes,
+preservation/recovery of corrupt files, practice distances, sequence timing and
+well-formed escaped SVG. Native archive compilation checks SwiftUI/AVFoundation;
+neither substitutes for physical interaction or voice-quality testing.
+
+After installation, check:
+
+- Save a setup with routes and notes; relaunch, search/favorite, edit and load it.
+  Import an exported play, verify a separate copy, and share/open its SVG diagram.
+- Capture three different ball/player scenes, change hold times, play/pause,
+  replace/remove a step, and save/reload the sequence. Backgrounding must pause.
+- Start practice: no answer marker, cue or target coordinates should be visible
+  or spoken by VoiceOver before checking. Place a guess with touch or the Your
+  player sliders, reveal the 8 m reference zone, change role, and try Next scenario.
+- Speak/stop a cue; change scene and background the app. Speech must stop and
+  restore other audio. No recording or background-audio permission is requested.
+- Review an AI suggestion, adopt it as editable positions, capture and save.
+  Loading must restore editable inputs without presenting a cached AI answer.
+- Fold, unfold, rotate, resize and use large text during each workflow. Preserve
+  the 105 x 68 pitch, fixed Duo panes and all four native edge-toolbar controls.
+
 ## Security boundaries
 
 Only audited native source and build configuration belong in this independent

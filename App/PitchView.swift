@@ -19,6 +19,7 @@ struct PitchView: View {
     let editTarget: SceneEditTarget
     let onMoveTarget: (SceneEditTarget, FieldPoint) -> Void
     let onEditingChanged: (Bool) -> Void
+    let practice: PracticeRound?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorSchemeContrast) private var contrast
     @GestureState private var isDragging = false
@@ -61,8 +62,17 @@ struct PitchView: View {
                         context.stroke(line, with: .color(CoachPalette.lime.opacity(0.65)),
                                        style: StrokeStyle(lineWidth: 1.4, dash: [4, 6]))
                     }
-                    for route in routeDrawing.routes + (routeDrawing.preview.isEmpty ? [] : [routeDrawing.preview]) {
-                        drawRoute(route, context: &context, projection: projection)
+                    if practice == nil {
+                        for route in routeDrawing.routes + (routeDrawing.preview.isEmpty ? [] : [routeDrawing.preview]) {
+                            drawRoute(route, context: &context, projection: projection)
+                        }
+                    }
+                    if let round = practice, round.revealed {
+                        let center = projection.location(round.target.point)
+                        let radius = CGFloat(round.radiusMeters) * projection.metersToPoints
+                        let zone = Path(ellipseIn: CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2))
+                        context.fill(zone, with: .color(CoachPalette.lime.opacity(0.12)))
+                        context.stroke(zone, with: .color(CoachPalette.lime), style: StrokeStyle(lineWidth: 2, dash: [4, 4]))
                     }
                 }
                 if drawing, let target = routeDrawing.snapTarget {
@@ -105,6 +115,14 @@ struct PitchView: View {
                         .scaleEffect(advice.role == role ? 1 : 0.65)
                         .position(projection.location(advice.point))
                         .animation(reduceMotion ? nil : .smooth(duration: 0.15), value: advice.point)
+                }
+                if let guess = practice?.guess {
+                    marker(role, color: CoachPalette.blue, secondary: false)
+                        .overlay(alignment: .top) {
+                            Text("YOU").font(.system(size: 9, weight: .heavy)).foregroundStyle(.white).offset(y: -8)
+                        }
+                        .position(projection.location(guess))
+                        .allowsHitTesting(false)
                 }
                 Image(systemName: "soccerball")
                     .font(.system(size: 27, weight: .medium))
@@ -160,9 +178,12 @@ struct PitchView: View {
             .onChange(of: horizontal) { routeDrawing.cancelStroke() }
             .onDisappear { routeDrawing.cancelStroke(); onEditingChanged(false) }
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Soccer pitch. \(aiSuggested ? "AI suggestions" : "Instant guide"). \(role.label). \(recommendation.cue)")
-            .accessibilityValue("\(routeDrawing.routes.count) drawn routes. Suggested position \(Int((recommendation.point.depth * 100).rounded())) percent upfield and \(Int((recommendation.point.width * 100).rounded())) percent across.")
-            .accessibilityHint("Use Ball controls in the settings panel to move the ball with VoiceOver.")
+            .accessibilityLabel(practice?.revealed == false ? "Positioning practice. \(role.label). Answer hidden." :
+                                "Soccer pitch. \(aiSuggested ? "AI suggestions" : "Instant guide"). \(role.label). \(recommendation.cue)")
+            .accessibilityValue(practice?.revealed == false ? (practice?.guess == nil ? "Place your player, then check." : "Your player is placed. Check to reveal the guide.") :
+                                "\(routeDrawing.routes.count) drawn routes. Suggested position \(Int((recommendation.point.depth * 100).rounded())) percent upfield and \(Int((recommendation.point.width * 100).rounded())) percent across.")
+            .accessibilityHint(practice != nil ? "Use Your player coordinate controls in the practice panel with VoiceOver." :
+                                "Use Ball controls in the settings panel to move the ball with VoiceOver.")
         }
     }
 

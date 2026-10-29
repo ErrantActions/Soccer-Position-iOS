@@ -1,23 +1,23 @@
 import Foundation
 
-enum DefensiveFormation: String, CaseIterable, Identifiable, Sendable {
+enum DefensiveFormation: String, Codable, CaseIterable, Identifiable, Sendable {
     case fourThreeThree = "4-3-3"
     case fourFourTwo = "4-4-2"
     var id: String { rawValue }
 }
 
-enum OpponentRole: String, CaseIterable, Identifiable, Sendable {
+enum OpponentRole: String, Codable, CaseIterable, Identifiable, Sendable {
     case left = "7", striker = "9", right = "11"
     var id: String { rawValue }
 }
 
-struct PlayerPlacement: Equatable, Sendable, Identifiable {
+struct PlayerPlacement: Codable, Equatable, Sendable, Identifiable {
     let role: Position
     var point: FieldPoint
     var id: Position { role }
 }
 
-struct OpponentPlacement: Equatable, Sendable, Identifiable {
+struct OpponentPlacement: Codable, Equatable, Sendable, Identifiable {
     let role: OpponentRole
     var point: FieldPoint
     var id: OpponentRole { role }
@@ -27,17 +27,19 @@ enum SceneEditTarget: Hashable {
     case ball
     case teammate(Position)
     case opponent(OpponentRole)
+    case practice
 
     var label: String {
         switch self {
         case .ball: "Move ball"
         case .teammate(let role): "Move teammate \(role.rawValue)"
         case .opponent(let role): "Move opponent \(role.rawValue)"
+        case .practice: "Place your player"
         }
     }
 }
 
-struct TacticalScene: Equatable, Sendable {
+struct TacticalScene: Codable, Equatable, Sendable {
     let ball: FieldPoint
     let formation: DefensiveFormation
     let teammates: [PlayerPlacement]

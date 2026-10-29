@@ -59,10 +59,49 @@ Apple's store name "CoachAI" was unavailable; the on-device display name remains
 - Apple Foundation Models can also explain the selected role's current cue.
   Availability, rejection and generation failures are visible.
   No cloud AI, analytics, accounts, camera, microphone, location or push notifications.
+- A local playbook keeps named setups, coaching notes, favorites and captured
+  sequences. Search, duplicate, import/export editable JSON play files, or share
+  a self-contained SVG field diagram. Four example scenes help you get started.
+- Capture up to 24 decision steps, replace or remove a step, choose its hold time,
+  and play the sequence. Playback locks scene edits and pauses when the app becomes
+  inactive. Save the play to persist the sequence; the unsaved workbench is a session.
+- Positioning practice hides hints, routes and target accessibility coordinates
+  until you check your guess. It uses an 8 m reference zone on the real-size pitch,
+  not a claim that one precise coordinate is correct. Your-player sliders support
+  VoiceOver; session totals track checked rounds and in-zone guesses.
+- Optional spoken cues use system speech synthesis, with no microphone, recording
+  or background audio. Speech stops when the scene changes or the app is inactive.
+- Current teammates and opponents can be edited without AI. Reviewed AI suggestions
+  can be adopted as editable positions before saving or sequencing.
 
 The default instant guide is a deliberately simplified native teaching model, not feature parity
 with the web application's full multi-player tactical engine or challenge mode.
 It is not professional match analysis. Model-generated explanations can be wrong.
+
+## Coaching workbench
+
+Open **Playbook** in the coaching panel or native **More** menu. Quick save stores
+the current editable scene and sequence; the library lets you rename it, add notes,
+favorite it or share it. Loading a setup stops AI preview and restores editable
+inputs, routes and layers; it never reuses a saved model response as authority.
+Tap a numbered sequence step to load it before editing/replacing. SVG diagrams
+show editable positions, not a cached AI preview, and include only the first 240
+notes characters; JSON includes full notes and all steps. Import `.coachai.json`
+files through Files. Share deliberately: recipients receive your notes.
+
+The local library is stored in Application Support and written atomically, with
+complete file protection on iOS. The app does not upload it; iOS device backups may
+include it according to system settings. Imports are validated before saving and
+given new identities so they cannot overwrite another play. Limits are 100 plays,
+24 steps/play, 2 MB per share/import and 20 MB for the library. Each board supports
+100 routes and 20,000 total route points. Invalid data fails visibly rather than
+being silently repaired. A damaged library is preserved and locked against edits;
+the library offers recovery export and an explicit reset that keeps a recovery copy.
+
+Start **Your turn** to practice. Place your player, then check to reveal the guide
+and zone. Use **Next scenario**, change role, or end practice to continue coaching.
+Practice uses the simplified instant guide, not Apple Intelligence or a professional
+tactical assessment. Spoken cues are manually started and do not read saved notes.
 
 ## Build
 
@@ -85,8 +124,8 @@ bash tools/test-ios.sh
 Install both iPhone Duo and non-Duo iOS 27 simulators compatible with the selected SDK.
 The app and tests build once, then each simulator is booted and tested separately
 with explicit timeouts. Results remain local under the ignored build directory.
-`swift test` runs positioning, fold-layout/coordinate, route, AI-validation and
-request-freshness tests
+`swift test` runs positioning, fold-layout/coordinate, route, AI-validation,
+request-freshness, playbook/codec/persistence, practice, sequence and SVG tests
 without booting an iOS simulator. The manual unsigned workflow can also compile
 the app and iOS test bundle without executing simulators: set
 `run_simulator_tests=false`. The owner has standing authorization for TestFlight
