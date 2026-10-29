@@ -316,3 +316,27 @@ were uploaded. This update was not included in TestFlight build 2; the owner has
 since granted standing authorization to deploy completed app changes.
 Real touch/Pencil and fold interactions
 still need device verification.
+
+## Smart-route TestFlight release: build 3
+
+The owner's "always push to TestFlight" preference is persisted in
+[project instructions](../.github/copilot-instructions.md). Completed, verified
+app updates include dispatching the existing manual release workflow; no separate
+per-update approval is needed. This does not add push/PR release triggers or
+authorize paid runners, failed builds, public App Store submissions or secret
+disclosure. Documentation-only follow-ups do not create another app build.
+
+[Release run 40811224328](https://github.com/ErrantActions/Soccer-Position-iOS/actions/runs/40811224328)
+deployed main commit `1a98bf07bdc0ef9879f00efe9a0bdadbac08ec55` as **build 3**.
+The signed archive, export, upload and signing cleanup succeeded; simulator
+execution was explicitly waived and no release artifacts were uploaded.
+Apple reported build `a6399c05-47c2-4e1c-a8da-4be1379a62ff` as `VALID`, not
+expired, with internal state `IN_BETA_TESTING`. Build 3 access was verified in
+the existing internal tester group, and English testing notes were saved.
+No external group was changed.
+
+For an internal group with `hasAccessToAllBuilds=true`, allow automatic assignment
+to catch up after Apple processing instead of forcing a manual build assignment.
+The group can initially omit a newly valid build and reject an immediate POST
+with HTTP 422; re-read its build list and verify membership before reporting
+availability. Physical installation remains the owner's separate device check.
