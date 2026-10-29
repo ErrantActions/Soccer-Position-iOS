@@ -1,5 +1,26 @@
 # CoachAI publication and TestFlight runbook
 
+## Animated playbook and presenter release: build 10
+
+Source commit `c2d745a7e8093f2393360ebc3673b7e4d5d4aa9c` passed **129 portable
+Swift tests**, **34 release guards**, PowerShell upload guards, native archive,
+IPA export, compliance checks and upload in
+[release run 40916214021](https://github.com/ErrantActions/Soccer-Position-iOS/actions/runs/40916214021).
+Local workflow lint, whitespace and staged credential-pattern checks passed.
+No simulator execution, duplicate validation run or release artifacts were
+requested; temporary signing cleanup succeeded.
+
+Apple initially accepted the upload without listing a build record. After an
+extended bounded processing check, build `b5b8ad4a-8f09-4d0e-abc7-d406c1397974`
+(version **10**) was verified as `VALID`, `usesNonExemptEncryption=false` and
+`IN_BETA_TESTING`. Existing internal group access and English testing notes were
+verified. No external group or public App Store submission was changed.
+
+Native compilation verifies availability/type checking for the iOS 27 scene
+accessory code, not actual AirPlay/cable behavior. Phone installation, audience
+privacy across modal/system transitions, physical Duo folds and visual playback
+remain the device checks below. Generic conferencing mirroring is not field-only.
+
 ## Animated plays and external-display device checks
 
 The new starter library contains six original multi-player tactical animations
