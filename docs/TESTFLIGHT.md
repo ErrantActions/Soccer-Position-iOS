@@ -270,7 +270,22 @@ iOS 27.1 fold-region layouts were validated against commit
 [unsigned validation run 40803008819](https://github.com/ErrantActions/Soccer-Position-iOS/actions/runs/40803008819).
 All 15 Swift positioning/layout/coordinate tests and existing release guards passed;
 Xcode compiled the full app and iOS test bundle successfully. Simulator execution,
-artifacts and signing were disabled. This source update is **not** a new TestFlight
-build; build 1 remains the previously uploaded version until the owner authorizes
-another release. Real folding transitions, Pencil input and visual appearance on
-the phone still need device verification.
+artifacts and signing were disabled for that validation. Real folding transitions,
+Pencil input and visual appearance on the phone still need device verification.
+
+## Redesigned TestFlight release: build 2
+
+The owner subsequently authorized deployment of main commit
+`4ba322d27e0da1f6df3c8e6af0ee2961329e8018`.
+[Release run 40803660017](https://github.com/ErrantActions/Soccer-Position-iOS/actions/runs/40803660017)
+successfully validated signing, built the signed device archive, exported and
+uploaded **build 2**, and cleaned up signing material. Simulator execution was
+explicitly disabled; no duplicate validation run or release artifacts were created.
+
+Apple reported build `139ffd68-f7e4-4274-9dff-7739cdc1eb71` as `VALID`, not expired,
+with internal state `IN_BETA_TESTING`. Access to build 2 was verified in the app's
+existing internal tester group. English TestFlight testing notes describe the
+new pitch-first UI, Duo layouts, comparison, route drawing and device checks.
+No external group was modified and no public App Store release was submitted.
+Existing internal testers can update through the TestFlight app; installation on
+the owner's physical phone remains a separate verification.
