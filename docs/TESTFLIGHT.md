@@ -1,5 +1,28 @@
 # CoachAI publication and TestFlight runbook
 
+## Researched youth-team support release: build 12
+
+Source commit `8d9ade1927abace614d634465537a2fec48c58e3` passed **161 portable
+Swift tests**, **34 release guards**, PowerShell upload guards, native archive,
+IPA export, compliance validation and upload in
+[release run 40937610308](https://github.com/ErrantActions/Soccer-Position-iOS/actions/runs/40937610308).
+Local workflow lint, whitespace and staged credential-pattern checks passed.
+A transient GitHub status connection failure did not fail the release; its final
+job conclusion and all steps were verified successful. No simulator execution,
+duplicate validation job or release artifacts were requested. Signing cleanup
+succeeded.
+
+Apple build `b36f355f-3062-48f7-bab9-b2fe8606fe14` (version **12**) was verified
+as `VALID`, not expired, `usesNonExemptEncryption=false` and `IN_BETA_TESTING`.
+Existing automatic internal group access and English testing notes were verified.
+No external group or public App Store submission was changed.
+
+Tests cover every offered team/formation/keeper count, mirrored rosters,
+per-team caps and uneven groups, physical aspect/scale/coordinate roundtrips,
+role preservation, reset/detach operations, schema-3 compatibility and youth SVG
+output. Native compilation does not establish physical touch/VoiceOver, folding,
+or AirPlay/cable behavior; those remain the device checks below.
+
 ## Youth formats device checks
 
 Kids & smaller teams adds 3v3/4v4 without goalkeepers and 5v5/7v7/9v9 with
