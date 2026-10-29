@@ -289,3 +289,24 @@ new pitch-first UI, Duo layouts, comparison, route drawing and device checks.
 No external group was modified and no public App Store release was submitted.
 Existing internal testers can update through the TestFlight app; installation on
 the owner's physical phone remains a separate verification.
+
+## Smart routes and fixed pitch update
+
+Source commit `a9882bad637043b5dcbb97a9d7d778126ada2a96` replaces the scrolling
+split-mode pitch with a full-pane canvas. All route tools, reset, role selection
+and settings live in the right panel; a horizontal tabletop hinge instead uses
+top pitch/bottom controls. Expanded Duo layouts no longer require tablet width,
+and their settings can scroll independently even at accessibility text sizes.
+
+Routes now have curve/straight modes, screen-space sampling and simplification,
+optional nearby ball/player endpoint snapping with a target preview, accidental
+gesture rejection, and undo/redo. Finished routes remain normalized; interrupted
+strokes are cancelled on resize, rotation or tool changes rather than joined to
+stale coordinates. Clearing routes explicitly clears history too.
+
+[Unsigned validation run 40809903744](https://github.com/ErrantActions/Soccer-Position-iOS/actions/runs/40809903744)
+passed all 31 Swift tests, 22 release guard tests, PowerShell upload guards and
+full app/iOS test bundle compilation. No simulator was launched and no artifacts
+were uploaded. This update is not included in TestFlight build 2; another release
+requires the owner's deployment approval. Real touch/Pencil and fold interactions
+still need device verification.
