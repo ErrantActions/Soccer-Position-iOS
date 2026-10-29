@@ -47,6 +47,8 @@ jobs:
           pwsh -NoProfile -File tools/tests/test-upload-guards.ps1
       - name: Install declared project generator
         run: brew bundle --file Brewfile
+      - name: Test tactical rules, AI validation and scene freshness without a simulator
+        run: swift test
       - name: Preflight, optional tests, archive, and upload
         env:
           DISTRIBUTION_CERTIFICATE_BASE64: ${{ secrets.DISTRIBUTION_CERTIFICATE_BASE64 }}

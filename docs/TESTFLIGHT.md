@@ -340,3 +340,30 @@ to catch up after Apple processing instead of forcing a manual build assignment.
 The group can initially omit a newly valid build and reject an immediate POST
 with HTTP 422; re-read its build list and verify membership before reporting
 availability. Physical installation remains the owner's separate device check.
+
+## On-device AI Positioning
+
+The optional experimental mode uses Foundation Models guided generation to return
+actual normalized coordinates and per-role reasons for LB, LCB, RCB, RB and CDM.
+It is not just rewritten coaching text. Its input snapshot includes the ball,
+current teammates, three editable opponents, opposition possession and a chosen
+4-3-3 or 4-4-2 formation. Only the five-player defensive unit is modeled, not a
+complete eleven-player team.
+
+AI output is applied only after finite/field-bound, complete-role, channel,
+teammate/opponent clearance, goal-side, back-line order/compactness and central
+goal-coverage checks pass. These are geometry safeguards, not proof of correct
+soccer tactics. Rejection, unavailability, failures and timeouts are visible; the
+instant guide remains explicitly labeled until valid AI output is accepted.
+Requests use fresh sessions, are debounced after edits, are cancelled when the
+scene changes or app becomes inactive, and time out after 45 seconds. Request
+tokens and full scene snapshots prevent old results overwriting newer edits.
+
+The release workflow runs portable Swift validation tests before signing in the
+same job; no separate duplicate validation or simulator execution is required.
+Native compilation checks Foundation Models types/schema macros. It does not
+verify that an on-device model can generate a good plan: enable Apple Intelligence
+and finish its model download on supported hardware, then test Analyze, automatic
+after-edit analysis, cancellation, all player-edit controls, invalid-output
+rejection and labeled fallback on the phone. No cloud API, extra capability,
+sensor permission or collected data was introduced.

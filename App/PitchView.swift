@@ -11,6 +11,14 @@ struct PitchView: View {
     let routeStyle: RouteStyle
     let snapRoutes: Bool
     let horizontal: Bool
+    let recommendation: Recommendation
+    let suggestions: [PlayerAdvice]
+    let currentTeammates: [PlayerPlacement]
+    let opponents: [OpponentPlacement]
+    let aiSuggested: Bool
+    let editTarget: SceneEditTarget
+    let onMoveTarget: (SceneEditTarget, FieldPoint) -> Void
+    let onEditingChanged: (Bool) -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @GestureState private var isDragging = false
     @State private var gestureContext: GestureContext?
@@ -23,13 +31,11 @@ struct PitchView: View {
         let snap: Bool
         let anchors: [FieldPoint]
         let routeCount: Int
+        let editTarget: SceneEditTarget
     }
 
-    private var recommendation: Recommendation { Positioning.recommend(ball: ball, position: role) }
     private var anchors: [FieldPoint] {
-        var points = [ball, recommendation.point]
-        if let comparison { points.append(Positioning.recommend(ball: ball, position: comparison).point) }
-        return points
+        [ball] + suggestions.map(\.point) + currentTeammates.map(\.point) + opponents.map(\.point)
     }
 
     var body: some View {
@@ -38,7 +44,7 @@ struct PitchView: View {
             let context = GestureContext(
                 size: geometry.size, horizontal: horizontal, drawing: drawing,
                 style: routeStyle, snap: snapRoutes, anchors: drawing ? anchors : [],
-                routeCount: routeDrawing.routes.count
+                routeCount: routeDrawing.routes.count, editTarget: editTarget
             )
             ZStack {
                 RoundedRectangle(cornerRadius: 22)
@@ -59,13 +65,13 @@ struct PitchView: View {
                     for route in routeDrawing.routes + (routeDrawing.preview.isEmpty ? [] : [routeDrawing.preview]) {
                         drawRoute(route, context: &context, projection: projection)
                     }
-                    if drawing, let target = routeDrawing.snapTarget {
-                        Circle()
-                            .strokeBorder(.white.opacity(0.9), style: StrokeStyle(lineWidth: 1.5, dash: [3, 3]))
-                            .frame(width: 56, height: 56)
-                            .position(projection.location(target))
-                            .allowsHitTesting(false)
-                    }
+                }
+                if drawing, let target = routeDrawing.snapTarget {
+                    Circle()
+                        .strokeBorder(.white.opacity(0.9), style: StrokeStyle(lineWidth: 1.5, dash: [3, 3]))
+                        .frame(width: 56, height: 56)
+                        .position(projection.location(target))
+                        .allowsHitTesting(false)
                 }
                 if showHeat {
                     Ellipse()
@@ -74,13 +80,33 @@ struct PitchView: View {
                         .position(projection.location(recommendation.point))
                         .allowsHitTesting(false)
                 }
-                if let comparison {
-                    marker(comparison, color: CoachPalette.blue, secondary: true)
-                        .position(projection.location(Positioning.recommend(ball: ball, position: comparison).point))
+                ForEach(currentTeammates) { player in
+                    Text(player.role.rawValue)
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.7))
+                        .frame(width: 24, height: 24)
+                        .background(CoachPalette.ink.opacity(0.8), in: Circle())
+                        .overlay(Circle().strokeBorder(.white.opacity(editTarget == .teammate(player.role) ? 1 : 0.4), lineWidth: 1.5))
+                        .position(projection.location(player.point))
+                        .allowsHitTesting(false)
                 }
-                marker(role, color: CoachPalette.lime, secondary: false)
-                    .position(projection.location(recommendation.point))
-                    .animation(reduceMotion ? nil : .smooth(duration: 0.15), value: ball)
+                ForEach(opponents) { opponent in
+                    Text(opponent.role.rawValue)
+                        .font(.system(.caption2, design: .rounded, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 26, height: 26)
+                        .background(Color(red: 0.65, green: 0.18, blue: 0.23), in: RoundedRectangle(cornerRadius: 8))
+                        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.white.opacity(editTarget == .opponent(opponent.role) ? 1 : 0.25), lineWidth: 1.5))
+                        .position(projection.location(opponent.point))
+                        .allowsHitTesting(false)
+                }
+                ForEach(suggestions) { advice in
+                    marker(advice.role, color: advice.role == role ? (aiSuggested ? CoachPalette.ai : CoachPalette.lime) :
+                            advice.role == comparison ? CoachPalette.blue : CoachPalette.muted, secondary: advice.role != role)
+                        .scaleEffect(advice.role == role ? 1 : 0.65)
+                        .position(projection.location(advice.point))
+                        .animation(reduceMotion ? nil : .smooth(duration: 0.15), value: advice.point)
+                }
                 Image(systemName: "soccerball")
                     .font(.system(size: 27, weight: .medium))
                     .foregroundStyle(.white, Color.black.opacity(0.85))
@@ -96,7 +122,10 @@ struct PitchView: View {
             .gesture(DragGesture(minimumDistance: drawing ? 3 : 0)
                 .updating($isDragging) { _, active, _ in active = true }
                 .onChanged { value in
-                    if gestureContext == nil { gestureContext = context }
+                    if gestureContext == nil {
+                        gestureContext = context
+                        if !drawing { onEditingChanged(true) }
+                    }
                     guard gestureContext == context else { return }
                     let point = projection.fieldPoint(value.location)
                     if drawing {
@@ -108,7 +137,7 @@ struct PitchView: View {
                         }
                         routeDrawing.update(at: point, projection: projection, anchors: anchors, snap: snapRoutes)
                     } else {
-                        ball = point
+                        if editTarget == .ball { ball = point } else { onMoveTarget(editTarget, point) }
                     }
                 }
                 .onEnded { value in
@@ -121,16 +150,17 @@ struct PitchView: View {
                         routeDrawing.cancelStroke()
                     }
                     gestureContext = nil
+                    onEditingChanged(false)
                 })
             .onChange(of: isDragging) {
-                if !isDragging { routeDrawing.cancelStroke(); gestureContext = nil }
+                if !isDragging { routeDrawing.cancelStroke(); gestureContext = nil; onEditingChanged(false) }
             }
             .onChange(of: geometry.size) { routeDrawing.cancelStroke() }
             .onChange(of: horizontal) { routeDrawing.cancelStroke() }
-            .onDisappear { routeDrawing.cancelStroke() }
+            .onDisappear { routeDrawing.cancelStroke(); onEditingChanged(false) }
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Soccer pitch. \(role.label). \(recommendation.cue)")
-            .accessibilityValue("\(routeDrawing.routes.count) drawn routes")
+            .accessibilityLabel("Soccer pitch. \(aiSuggested ? "AI suggestions" : "Instant guide"). \(role.label). \(recommendation.cue)")
+            .accessibilityValue("\(routeDrawing.routes.count) drawn routes. Suggested position \(Int((recommendation.point.depth * 100).rounded())) percent upfield and \(Int((recommendation.point.width * 100).rounded())) percent across.")
             .accessibilityHint("Use Ball controls in the settings panel to move the ball with VoiceOver.")
         }
     }

@@ -6,6 +6,7 @@ enum CoachPalette {
     static let surface = Color(red: 0.075, green: 0.11, blue: 0.10)
     static let lime = Color(red: 0.78, green: 0.96, blue: 0.40)
     static let blue = Color(red: 0.46, green: 0.80, blue: 1)
+    static let ai = Color(red: 0.78, green: 0.67, blue: 1)
     static let muted = Color(red: 0.66, green: 0.73, blue: 0.69)
 }
 
@@ -20,6 +21,14 @@ struct CoachView: View {
     @State private var routeDrawing = RouteDrawing()
     @State private var routeStyle: RouteStyle = .curve
     @State private var snapRoutes = true
+    @State private var aiPositioning = false
+    @State private var autoAnalyze = true
+    @State private var formation: DefensiveFormation = .fourThreeThree
+    @State private var teammates = TacticalScene.defaultTeammates
+    @State private var opponents = TacticalScene.defaultOpponents
+    @State private var sceneEditTarget: SceneEditTarget = .ball
+    @State private var sceneEditing = false
+    @State private var intelligence = PositioningIntelligence()
     @State private var explanation: String?
     @State private var message: String?
     @State private var isGenerating = false
@@ -28,7 +37,25 @@ struct CoachView: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private var recommendation: Recommendation { Positioning.recommend(ball: ball, position: position) }
+    private var scene: TacticalScene {
+        TacticalScene(ball: ball, formation: formation, teammates: teammates, opponents: opponents)
+    }
+    private var acceptedPlan: AIPositionPlan? {
+        aiPositioning ? intelligence.analysis.acceptedPlan(for: scene) : nil
+    }
+    private var recommendation: Recommendation { guidance(for: position) }
+    private var effectiveEditTarget: SceneEditTarget { aiPositioning ? sceneEditTarget : .ball }
+    private var displayedAdvice: [PlayerAdvice] {
+        let roles = Position.allCases.filter { aiPositioning || $0 == position || (comparing && $0 == comparison) }
+        return roles.map {
+            let result = guidance(for: $0)
+            return PlayerAdvice(role: $0, point: result.point, reason: result.cue)
+        }
+    }
+
+    private func guidance(for role: Position) -> Recommendation {
+        acceptedPlan?.recommendation(for: role) ?? Positioning.recommend(ball: ball, position: role)
+    }
 
     var body: some View {
         GeometryReader { proxy in
@@ -66,7 +93,28 @@ struct CoachView: View {
         }
         .preferredColorScheme(.dark)
         .tint(CoachPalette.lime)
-        .onChange(of: ball) { routeDrawing.cancelStroke(); invalidateExplanation() }
+        .onChange(of: scene) {
+            routeDrawing.cancelStroke()
+            invalidateExplanation()
+            intelligence.cancel(message: aiPositioning ? "Scene changed. Showing the instant guide." : "Instant guide active.")
+            if aiPositioning, autoAnalyze, !sceneEditing { analyzePositions(debounced: true) }
+        }
+        .onChange(of: sceneEditing) {
+            if !sceneEditing, aiPositioning, autoAnalyze { analyzePositions(debounced: true) }
+        }
+        .onChange(of: aiPositioning) {
+            intelligence.cancel()
+            invalidateExplanation()
+            routeDrawing.cancelStroke()
+            sceneEditTarget = .ball
+            drawing = false
+            if aiPositioning { analyzePositions() }
+        }
+        .onChange(of: autoAnalyze) {
+            if autoAnalyze, aiPositioning, !sceneEditing { analyzePositions(debounced: true) }
+        }
+        .onChange(of: sceneEditTarget) { drawing = false; routeDrawing.cancelStroke() }
+        .onChange(of: acceptedPlan) { routeDrawing.cancelStroke(); invalidateExplanation() }
         .onChange(of: position) {
             if comparison == position {
                 comparison = Position.allCases.first { $0 != position } ?? .lb
@@ -78,9 +126,15 @@ struct CoachView: View {
         .onChange(of: routeStyle) { routeDrawing.cancelStroke() }
         .onChange(of: snapRoutes) { routeDrawing.cancelStroke() }
         .onChange(of: scenePhase) {
-            if scenePhase != .active { routeDrawing.cancelStroke(); invalidateExplanation() }
+            if scenePhase != .active {
+                routeDrawing.cancelStroke()
+                invalidateExplanation()
+                intelligence.cancel(message: "Analysis paused while the app is inactive. Showing the instant guide.")
+            } else if aiPositioning, autoAnalyze {
+                analyzePositions(debounced: true)
+            }
         }
-        .onDisappear { invalidateExplanation() }
+        .onDisappear { invalidateExplanation(); intelligence.cancel() }
         .sensoryFeedback(.selection, trigger: position)
         .sensoryFeedback(.selection, trigger: routeDrawing.routes.count)
     }
@@ -90,7 +144,11 @@ struct CoachView: View {
             ball: $ball, routeDrawing: $routeDrawing, role: position,
             comparison: comparing ? comparison : nil,
             showHeat: showHeat, showGuides: showGuides,
-            drawing: drawing, routeStyle: routeStyle, snapRoutes: snapRoutes, horizontal: horizontal
+            drawing: drawing, routeStyle: routeStyle, snapRoutes: snapRoutes, horizontal: horizontal,
+            recommendation: recommendation, suggestions: displayedAdvice,
+            currentTeammates: aiPositioning ? teammates : [], opponents: aiPositioning ? opponents : [],
+            aiSuggested: acceptedPlan != nil, editTarget: effectiveEditTarget,
+            onMoveTarget: moveSceneTarget, onEditingChanged: { sceneEditing = $0 }
         )
     }
 
@@ -99,7 +157,7 @@ struct CoachView: View {
         return field(horizontal: horizontal)
             .overlay(alignment: .top) {
                 HStack(spacing: 12) {
-                    legend(position.rawValue, color: CoachPalette.lime)
+                    legend(position.rawValue, color: acceptedPlan == nil ? CoachPalette.lime : CoachPalette.ai)
                     if comparing { legend(comparison.rawValue, color: CoachPalette.blue) }
                     Spacer(minLength: 0)
                     Label(horizontal ? "Defend left" : "Defend bottom", systemImage: horizontal ? "arrow.left" : "arrow.down")
@@ -110,7 +168,8 @@ struct CoachView: View {
                 .allowsHitTesting(false)
             }
             .overlay(alignment: .bottom) {
-                Text(drawing ? "DRAW ROUTE  ·  \(routeStyle.rawValue.uppercased())" : "DRAG TO MOVE THE BALL")
+                Text(drawing ? "DRAW ROUTE  ·  \(routeStyle.rawValue.uppercased())" :
+                        "\(acceptedPlan == nil ? "INSTANT GUIDE" : "AI SUGGESTIONS") · \(effectiveEditTarget.label.uppercased())")
                     .font(.caption2).foregroundStyle(CoachPalette.muted)
                     .lineLimit(1).minimumScaleFactor(0.7)
                     .padding(.horizontal, 16).padding(.bottom, 8)
@@ -144,7 +203,7 @@ struct CoachView: View {
                         Spacer()
                         HStack(spacing: 5) {
                             Circle().fill(CoachPalette.lime).frame(width: 5, height: 5)
-                            Text(drawing ? "DRAW ROUTE" : "LIVE POSITION")
+                            Text(drawing ? "DRAW ROUTE" : acceptedPlan == nil ? "INSTANT GUIDE" : "AI SUGGESTIONS")
                                 .font(.system(.caption2, design: .monospaced, weight: .medium))
                                 .foregroundStyle(CoachPalette.lime)
                         }
@@ -153,12 +212,14 @@ struct CoachView: View {
                     .aspectRatio(horizontal ? 1.5 : 0.76, contentMode: .fit)
                     .frame(maxWidth: horizontal ? 780 : 530)
                     HStack(spacing: 16) {
-                        legend(position.rawValue, color: CoachPalette.lime)
+                        legend(position.rawValue, color: acceptedPlan == nil ? CoachPalette.lime : CoachPalette.ai)
                         if comparing { legend(comparison.rawValue, color: CoachPalette.blue) }
                         Label("Ball", systemImage: "soccerball").font(.caption).foregroundStyle(CoachPalette.muted)
                         Spacer(minLength: 0)
                     }
-                    Text(drawing ? "Draw a route with your finger or Apple Pencil." : "Drag the ball anywhere. Your positioning updates instantly.")
+                    Text(drawing ? "Draw a route with your finger or Apple Pencil." :
+                            aiPositioning ? "\(effectiveEditTarget.label) by dragging on the pitch. White outlines are current players; colored markers are suggestions." :
+                            "Drag the ball anywhere. Your positioning updates instantly.")
                         .font(.caption)
                         .foregroundStyle(CoachPalette.muted)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -284,6 +345,7 @@ struct CoachView: View {
     private var coachingControls: some View {
         VStack(alignment: .leading, spacing: 18) {
             routePanel
+            aiPositioningPanel
             VStack(alignment: .leading, spacing: 14) {
                 HStack {
                     sectionEyebrow("01  CHOOSE YOUR ROLE")
@@ -349,13 +411,19 @@ struct CoachView: View {
 
     private var cueCard: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Label("THE NEXT MOVE", systemImage: "scope")
+            Label(acceptedPlan == nil ? "THE NEXT MOVE · INSTANT GUIDE" : "THE NEXT MOVE · AI SUGGESTION", systemImage: "scope")
                 .font(.system(.caption2, design: .monospaced, weight: .semibold))
                 .tracking(1)
                 .foregroundStyle(CoachPalette.lime)
             Text(recommendation.cue)
                 .font(.system(.title3, design: .rounded, weight: .semibold))
                 .fixedSize(horizontal: false, vertical: true)
+            if let plan = acceptedPlan {
+                Text(plan.summary).font(.caption).foregroundStyle(CoachPalette.ai)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text("AI target: \(Int((recommendation.point.depth * 100).rounded()))% upfield, \(Int((recommendation.point.width * 100).rounded()))% across.")
+                    .font(.caption2).foregroundStyle(CoachPalette.muted)
+            }
             Rectangle().fill(.white.opacity(0.08)).frame(height: 1)
             HStack(alignment: .top, spacing: 18) {
                 metric("BALL SIDE", value: ball.width < 0.4 ? "Left channel" : ball.width > 0.6 ? "Right channel" : "Central")
@@ -382,7 +450,7 @@ struct CoachView: View {
                     }
                     .tint(CoachPalette.blue)
                 }
-                Text(Positioning.recommend(ball: ball, position: comparison).cue)
+                Text(guidance(for: comparison).cue)
                     .font(.subheadline)
                     .foregroundStyle(CoachPalette.muted)
                     .fixedSize(horizontal: false, vertical: true)
@@ -419,7 +487,7 @@ struct CoachView: View {
                 .background(CoachPalette.lime.gradient, in: RoundedRectangle(cornerRadius: 14))
             }
             .buttonStyle(.plain)
-            .disabled(isGenerating)
+            .disabled(isGenerating || intelligence.analysis.isBusy)
             if let explanation {
                 Text(explanation).font(.subheadline).textSelection(.enabled)
                 Text("AI-generated. Check with your coach.").font(.caption2).foregroundStyle(CoachPalette.muted)
@@ -433,6 +501,130 @@ struct CoachView: View {
                 .font(.caption2).foregroundStyle(CoachPalette.muted)
         }
         .coachCard()
+    }
+
+    private var aiPositioningPanel: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Toggle(isOn: $aiPositioning) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Label("AI Positioning", systemImage: "sparkles")
+                        .font(.subheadline.weight(.semibold))
+                    Text("EXPERIMENTAL · ON DEVICE")
+                        .font(.system(.caption2, design: .monospaced))
+                        .foregroundStyle(CoachPalette.ai)
+                }
+            }
+            .tint(CoachPalette.ai)
+            Text("Apple Intelligence can propose actual player locations. Suggestions must pass geometry checks before they replace the instant guide.")
+                .font(.caption).foregroundStyle(CoachPalette.muted)
+                .fixedSize(horizontal: false, vertical: true)
+            if aiPositioning {
+                Picker("Formation", selection: $formation) {
+                    ForEach(DefensiveFormation.allCases) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                Text("Five-player defensive unit. Opposition has possession. White outlines show current teammates; red numbers show opponents.")
+                    .font(.caption).foregroundStyle(CoachPalette.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                Picker("Move on pitch", selection: $sceneEditTarget) {
+                    Text("Move ball").tag(SceneEditTarget.ball)
+                    ForEach(Position.allCases) { Text("Move teammate \($0.rawValue)").tag(SceneEditTarget.teammate($0)) }
+                    ForEach(OpponentRole.allCases) { Text("Move opponent \($0.rawValue)").tag(SceneEditTarget.opponent($0)) }
+                }
+                .pickerStyle(.menu)
+                selectedPlayerControls
+                Toggle("Analyze after edits", isOn: $autoAnalyze).font(.subheadline)
+                Button {
+                    if intelligence.analysis.isBusy {
+                        intelligence.cancel(message: "Analysis cancelled. Showing the instant guide.")
+                    } else {
+                        analyzePositions()
+                    }
+                } label: {
+                    HStack(spacing: 9) {
+                        if intelligence.analysis.isBusy { ProgressView().tint(CoachPalette.ai) }
+                        Text(intelligence.analysis.isBusy ? "Cancel analysis" : "Analyze positions")
+                            .font(.subheadline.weight(.semibold))
+                        Spacer(minLength: 0)
+                        Image(systemName: intelligence.analysis.isBusy ? "xmark" : "arrow.up.right")
+                    }
+                    .foregroundStyle(CoachPalette.ai)
+                    .padding(14).frame(minHeight: 48)
+                    .background(CoachPalette.ai.opacity(0.1), in: RoundedRectangle(cornerRadius: 14))
+                }
+                .buttonStyle(.plain)
+                .disabled(isGenerating)
+                Text(intelligence.analysis.status)
+                    .font(.caption).foregroundStyle(CoachPalette.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("positioningAnalysisStatus")
+                Text(acceptedPlan == nil ? "Displayed positions: INSTANT GUIDE" : "Displayed positions: AI SUGGESTIONS")
+                    .font(.system(.caption2, design: .monospaced, weight: .semibold))
+                    .foregroundStyle(acceptedPlan == nil ? CoachPalette.lime : CoachPalette.ai)
+                Text("AI may be tactically wrong even after these checks. Review with your coach. No cloud fallback.")
+                    .font(.caption2).foregroundStyle(CoachPalette.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .coachCard()
+    }
+
+    @ViewBuilder private var selectedPlayerControls: some View {
+        switch sceneEditTarget {
+        case .ball:
+            EmptyView()
+        case .teammate(let role):
+            if let index = teammates.firstIndex(where: { $0.role == role }) {
+                coordinateControls(depth: $teammates[index].point.depth, width: $teammates[index].point.width, label: "Teammate \(role.rawValue)")
+            }
+        case .opponent(let role):
+            if let index = opponents.firstIndex(where: { $0.role == role }) {
+                coordinateControls(depth: $opponents[index].point.depth, width: $opponents[index].point.width, label: "Opponent \(role.rawValue)")
+            }
+        }
+    }
+
+    private func coordinateControls(depth: Binding<Double>, width: Binding<Double>, label: String) -> some View {
+        DisclosureGroup("Selected player controls") {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Distance from own goal").font(.caption)
+                Slider(value: depth, in: 0...1, onEditingChanged: { sceneEditing = $0 }) {
+                    Text("\(label) distance from own goal")
+                }
+                Text("Left to right").font(.caption)
+                Slider(value: width, in: 0...1, onEditingChanged: { sceneEditing = $0 }) {
+                    Text("\(label) left to right")
+                }
+            }
+            .foregroundStyle(CoachPalette.muted)
+            .padding(.top, 12)
+        }
+        .font(.caption)
+    }
+
+    private func moveSceneTarget(_ target: SceneEditTarget, _ point: FieldPoint) {
+        switch target {
+        case .ball:
+            ball = point.bounded
+        case .teammate(let role):
+            guard let index = teammates.firstIndex(where: { $0.role == role }) else {
+                intelligence.cancel(message: "The selected teammate is missing. Showing the instant guide.")
+                return
+            }
+            teammates[index].point = point.bounded
+        case .opponent(let role):
+            guard let index = opponents.firstIndex(where: { $0.role == role }) else {
+                intelligence.cancel(message: "The selected opponent is missing. Showing the instant guide.")
+                return
+            }
+            opponents[index].point = point.bounded
+        }
+    }
+
+    private func analyzePositions(debounced: Bool = false) {
+        guard aiPositioning, scenePhase == .active else { return }
+        invalidateExplanation()
+        intelligence.analyze(scene, debounced: debounced)
     }
 
     private var pitchSettings: some View {
@@ -452,9 +644,9 @@ struct CoachView: View {
             DisclosureGroup {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Distance from your goal").font(.caption).foregroundStyle(CoachPalette.muted)
-                    Slider(value: $ball.depth, in: 0...1) { Text("Ball distance from your goal") }
+                    Slider(value: $ball.depth, in: 0...1, onEditingChanged: { sceneEditing = $0 }) { Text("Ball distance from your goal") }
                     Text("Left to right").font(.caption).foregroundStyle(CoachPalette.muted)
-                    Slider(value: $ball.width, in: 0...1) { Text("Ball left to right") }
+                    Slider(value: $ball.width, in: 0...1, onEditingChanged: { sceneEditing = $0 }) { Text("Ball left to right") }
                 }
                 .padding(.top, 14)
             } label: {

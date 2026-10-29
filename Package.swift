@@ -9,10 +9,10 @@ let package = Package(
             name: "CoachCore",
             path: "App",
             exclude: [
-                "CoachAIApp.swift", "CoachView.swift", "PitchView.swift",
+                "CoachAIApp.swift", "CoachView.swift", "PitchView.swift", "PositioningIntelligence.swift",
                 "Info.plist", "CoachAI.entitlements", "PrivacyInfo.xcprivacy",
             ],
-            sources: ["Positioning.swift", "CoachingLayout.swift", "RouteDrawing.swift"]
+            sources: ["Positioning.swift", "CoachingLayout.swift", "RouteDrawing.swift", "AIPositioning.swift"]
         ),
         .testTarget(name: "CoachCoreTests", dependencies: ["CoachCore"], path: "Tests"),
     ]

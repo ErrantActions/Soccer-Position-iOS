@@ -26,11 +26,21 @@ Apple's store name "CoachAI" was unavailable; the on-device display name remains
 - Accessibility-sized text uses a single column on ordinary flat displays; a Duo
   coaching desk keeps the fixed pitch and scrollable settings separate. Active
   fold boundaries remain respected. Animations honor Reduce Motion.
-- Apple Foundation Models can explain the teaching cue on supported devices.
-  AI does **not** calculate positions. Availability and generation failures are visible.
+- Optional **AI Positioning** uses Apple Foundation Models guided generation to
+  propose actual coordinates and reasons for all five defensive roles. Edit the
+  ball, current teammates, three opponents and formation; tap Analyze or analyze
+  automatically after releasing an edit. Current positions are white outlines,
+  opponents are red numbers, and accepted AI suggestions are explicitly labeled.
+- AI output is rejected rather than silently clamped when field bounds, role
+  channels, spacing, goal-side position, back-line shape or central coverage fail.
+  Until a valid response arrives, the instant guide remains visibly labeled.
+  Requests are cancelled on scene changes and time out after 45 seconds. These
+  checks do not prove good soccer tactics; AI Positioning is experimental.
+- Apple Foundation Models can also explain the selected role's current cue.
+  Availability, rejection and generation failures are visible.
   No cloud AI, analytics, accounts, camera, microphone, location or push notifications.
 
-This is a new, deliberately simplified native teaching model, not feature parity
+The default instant guide is a deliberately simplified native teaching model, not feature parity
 with the web application's full multi-player tactical engine or challenge mode.
 It is not professional match analysis. Model-generated explanations can be wrong.
 
@@ -55,7 +65,8 @@ bash tools/test-ios.sh
 Install both iPhone Duo and non-Duo iOS 27 simulators compatible with the selected SDK.
 The app and tests build once, then each simulator is booted and tested separately
 with explicit timeouts. Results remain local under the ignored build directory.
-`swift test` runs the existing positioning tests and fold-layout/coordinate tests
+`swift test` runs positioning, fold-layout/coordinate, route, AI-validation and
+request-freshness tests
 without booting an iOS simulator. The manual unsigned workflow can also compile
 the app and iOS test bundle without executing simulators: set
 `run_simulator_tests=false`. The owner has standing authorization for TestFlight
