@@ -2,21 +2,44 @@ import SwiftUI
 
 struct PitchView: View {
     @Binding var ball: FieldPoint
-    @Binding var routes: [[FieldPoint]]
-    @Binding var draft: [FieldPoint]
+    @Binding var routeDrawing: RouteDrawing
     let role: Position
     let comparison: Position?
     let showHeat: Bool
     let showGuides: Bool
     let drawing: Bool
+    let routeStyle: RouteStyle
+    let snapRoutes: Bool
     let horizontal: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @GestureState private var isDragging = false
+    @State private var gestureContext: GestureContext?
+
+    private struct GestureContext: Equatable {
+        let size: CGSize
+        let horizontal: Bool
+        let drawing: Bool
+        let style: RouteStyle
+        let snap: Bool
+        let anchors: [FieldPoint]
+        let routeCount: Int
+    }
 
     private var recommendation: Recommendation { Positioning.recommend(ball: ball, position: role) }
+    private var anchors: [FieldPoint] {
+        var points = [ball, recommendation.point]
+        if let comparison { points.append(Positioning.recommend(ball: ball, position: comparison).point) }
+        return points
+    }
 
     var body: some View {
         GeometryReader { geometry in
             let projection = PitchProjection(size: geometry.size, horizontal: horizontal)
+            let context = GestureContext(
+                size: geometry.size, horizontal: horizontal, drawing: drawing,
+                style: routeStyle, snap: snapRoutes, anchors: drawing ? anchors : [],
+                routeCount: routeDrawing.routes.count
+            )
             ZStack {
                 RoundedRectangle(cornerRadius: 22)
                     .fill(LinearGradient(
@@ -33,8 +56,15 @@ struct PitchView: View {
                         context.stroke(line, with: .color(CoachPalette.lime.opacity(0.65)),
                                        style: StrokeStyle(lineWidth: 1.4, dash: [4, 6]))
                     }
-                    for route in routes + (draft.isEmpty ? [] : [draft]) {
+                    for route in routeDrawing.routes + (routeDrawing.preview.isEmpty ? [] : [routeDrawing.preview]) {
                         drawRoute(route, context: &context, projection: projection)
+                    }
+                    if drawing, let target = routeDrawing.snapTarget {
+                        Circle()
+                            .strokeBorder(.white.opacity(0.9), style: StrokeStyle(lineWidth: 1.5, dash: [3, 3]))
+                            .frame(width: 56, height: 56)
+                            .position(projection.location(target))
+                            .allowsHitTesting(false)
                     }
                 }
                 if showHeat {
@@ -63,22 +93,45 @@ struct PitchView: View {
             .overlay(RoundedRectangle(cornerRadius: 22).strokeBorder(.white.opacity(0.09), lineWidth: 1))
             .clipShape(RoundedRectangle(cornerRadius: 22))
             .contentShape(Rectangle())
-            .gesture(DragGesture(minimumDistance: 0)
+            .gesture(DragGesture(minimumDistance: drawing ? 3 : 0)
+                .updating($isDragging) { _, active, _ in active = true }
                 .onChanged { value in
+                    if gestureContext == nil { gestureContext = context }
+                    guard gestureContext == context else { return }
                     let point = projection.fieldPoint(value.location)
                     if drawing {
-                        draft.append(point)
+                        if routeDrawing.draft.isEmpty {
+                            routeDrawing.begin(
+                                at: projection.fieldPoint(value.startLocation), style: routeStyle,
+                                projection: projection, anchors: anchors, snap: snapRoutes
+                            )
+                        }
+                        routeDrawing.update(at: point, projection: projection, anchors: anchors, snap: snapRoutes)
                     } else {
                         ball = point
                     }
                 }
-                .onEnded { _ in
-                    if draft.count > 1 { routes.append(draft) }
-                    draft = []
+                .onEnded { value in
+                    if drawing, gestureContext == context {
+                        routeDrawing.finish(
+                            at: projection.fieldPoint(value.location),
+                            projection: projection, anchors: anchors, snap: snapRoutes
+                        )
+                    } else {
+                        routeDrawing.cancelStroke()
+                    }
+                    gestureContext = nil
                 })
+            .onChange(of: isDragging) {
+                if !isDragging { routeDrawing.cancelStroke(); gestureContext = nil }
+            }
+            .onChange(of: geometry.size) { routeDrawing.cancelStroke() }
+            .onChange(of: horizontal) { routeDrawing.cancelStroke() }
+            .onDisappear { routeDrawing.cancelStroke() }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Soccer pitch. \(role.label). \(recommendation.cue)")
-            .accessibilityHint("Use Ball controls below to move the ball with VoiceOver.")
+            .accessibilityValue("\(routeDrawing.routes.count) drawn routes")
+            .accessibilityHint("Use Ball controls in the settings panel to move the ball with VoiceOver.")
         }
     }
 
@@ -131,11 +184,21 @@ struct PitchView: View {
         guard let first = points.first, let last = points.last, points.count > 1 else { return }
         var path = Path()
         path.move(to: projection.location(first))
-        for point in points.dropFirst() { path.addLine(to: projection.location(point)) }
+        if points.count == 2 {
+            path.addLine(to: projection.location(last))
+        } else {
+            for index in 1..<points.count {
+                let previous = projection.location(points[index - 1])
+                let current = projection.location(points[index])
+                let midpoint = CGPoint(x: (previous.x + current.x) / 2, y: (previous.y + current.y) / 2)
+                path.addQuadCurve(to: midpoint, control: previous)
+            }
+            path.addLine(to: projection.location(last))
+        }
         context.stroke(path, with: .color(.white.opacity(0.9)), style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
         let end = projection.location(last)
-        let previous = projection.location(points[max(0, points.count - 4)])
-        let angle = atan2(end.y - previous.y, end.x - previous.x)
+        guard let direction = RouteDrawing.arrowDirection(for: points, projection: projection) else { return }
+        let angle = atan2(direction.dy, direction.dx)
         var arrow = Path()
         arrow.move(to: CGPoint(x: end.x - 10 * cos(angle - 0.5), y: end.y - 10 * sin(angle - 0.5)))
         arrow.addLine(to: end)

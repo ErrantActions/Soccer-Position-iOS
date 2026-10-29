@@ -10,7 +10,9 @@ struct CoachingLayout: Equatable {
     let pitchPane: CGRect
     let coachPane: CGRect?
 
-    static func resolve(size: CGSize, division: CGRect?, largeText: Bool = false) -> CoachingLayout {
+    static func resolve(
+        size: CGSize, division: CGRect?, largeText: Bool = false, duoDisplay: Bool = false
+    ) -> CoachingLayout {
         let bounds = CGRect(origin: .zero, size: size)
         if let division {
             let fold = division.intersection(bounds)
@@ -30,8 +32,9 @@ struct CoachingLayout: Equatable {
                 return CoachingLayout(mode: .compact, pitchPane: top.height > bottom.height ? top : bottom, coachPane: nil)
             }
         }
-        if size.width >= 760, !largeText {
-            let sidebar = min(390, size.width * 0.4)
+        let duoDesk = duoDisplay && size.width >= 520
+        if (size.width >= 760 || duoDesk), (!largeText || duoDesk) {
+            let sidebar = min(390, max(240, size.width * 0.38))
             return CoachingLayout(
                 mode: .desk,
                 pitchPane: CGRect(x: 0, y: 0, width: size.width - sidebar, height: size.height),

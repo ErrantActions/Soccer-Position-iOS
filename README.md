@@ -13,13 +13,19 @@ Apple's store name "CoachAI" was unavailable; the on-device display name remains
 - Optional position heat spot and goal-side guide; accessible ball sliders.
 - Pitch-first dark coaching interface with a striped field, distinct role markers,
   quick scenario presets and large position controls.
-- Compare two roles against the same ball; sketch and undo normalized tactical
-  routes with a finger or Apple Pencil. Routes survive rotation and resizing.
+- Compare two roles against the same ball; draw smoothed curves or straight passes
+  with optional ball/player endpoint snapping, undo and redo. Tiny accidental
+  gestures are ignored. Finished routes survive rotation and resizing; changing
+  the canvas geometry cancels only the unfinished stroke.
 - On iOS 27.1+, Apple's actual division reserved regions drive Duo book-fold and
   tabletop layouts. The pitch and coaching controls stay on opposite sides of the
-  active fold. A flat expanded display shows the coaching desk side by side.
-- Accessibility-sized text uses a single scrollable column when flat; active fold
-  boundaries remain respected. Animations honor Reduce Motion.
+  active fold. On expanded Duo and wide layouts, the pitch fills its own pane
+  without scrolling or an aspect-ratio size cap; all controls live in the
+  independently scrolling right panel. A horizontal tabletop fold uses a full
+  top pitch pane and bottom controls so nothing crosses the hinge.
+- Accessibility-sized text uses a single column on ordinary flat displays; a Duo
+  coaching desk keeps the fixed pitch and scrollable settings separate. Active
+  fold boundaries remain respected. Animations honor Reduce Motion.
 - Apple Foundation Models can explain the teaching cue on supported devices.
   AI does **not** calculate positions. Availability and generation failures are visible.
   No cloud AI, analytics, accounts, camera, microphone, location or push notifications.

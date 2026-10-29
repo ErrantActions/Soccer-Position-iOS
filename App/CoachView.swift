@@ -17,8 +17,9 @@ struct CoachView: View {
     @State private var showHeat = true
     @State private var showGuides = true
     @State private var drawing = false
-    @State private var routes: [[FieldPoint]] = []
-    @State private var draft: [FieldPoint] = []
+    @State private var routeDrawing = RouteDrawing()
+    @State private var routeStyle: RouteStyle = .curve
+    @State private var snapRoutes = true
     @State private var explanation: String?
     @State private var message: String?
     @State private var isGenerating = false
@@ -32,16 +33,19 @@ struct CoachView: View {
     var body: some View {
         GeometryReader { proxy in
             let division = activeDivision(proxy)
-            let layout = CoachingLayout.resolve(size: proxy.size, division: division, largeText: typeSize.isAccessibilitySize)
+            let duo = hasDuoDisplay(proxy)
+            let layout = CoachingLayout.resolve(
+                size: proxy.size, division: division, largeText: typeSize.isAccessibilitySize, duoDisplay: duo
+            )
             ZStack(alignment: .topLeading) {
                 CoachPalette.ink.ignoresSafeArea()
                 RadialGradient(colors: [CoachPalette.lime.opacity(0.07), .clear], center: .topLeading, startRadius: 0, endRadius: 600)
                     .ignoresSafeArea().allowsHitTesting(false)
                 Group {
-                    if layout.mode == .tabletop {
-                        tabletopPitch(size: layout.pitchPane.size)
+                    if layout.coachPane != nil {
+                        fixedPitchPane(size: layout.pitchPane.size)
                     } else {
-                        pitchPane(layout: layout, duo: hasDuoDisplay(proxy))
+                        pitchPane(layout: layout, duo: duo)
                     }
                 }
                     .frame(width: layout.pitchPane.width, height: layout.pitchPane.height)
@@ -49,8 +53,8 @@ struct CoachView: View {
                 if let coach = layout.coachPane {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 20) {
+                            brand
                             sectionEyebrow(layout.mode == .tabletop ? "TOUCHLINE CONTROLS" : "THE COACH'S VIEW")
-                            if layout.mode == .tabletop { pitchToolbar }
                             coachingControls
                         }
                         .padding(22)
@@ -62,50 +66,57 @@ struct CoachView: View {
         }
         .preferredColorScheme(.dark)
         .tint(CoachPalette.lime)
-        .onChange(of: ball) { invalidateExplanation() }
+        .onChange(of: ball) { routeDrawing.cancelStroke(); invalidateExplanation() }
         .onChange(of: position) {
             if comparison == position {
                 comparison = Position.allCases.first { $0 != position } ?? .lb
             }
+            routeDrawing.cancelStroke()
             invalidateExplanation()
         }
-        .onChange(of: drawing) { draft = [] }
-        .onChange(of: scenePhase) { if scenePhase != .active { invalidateExplanation() } }
+        .onChange(of: drawing) { routeDrawing.cancelStroke() }
+        .onChange(of: routeStyle) { routeDrawing.cancelStroke() }
+        .onChange(of: snapRoutes) { routeDrawing.cancelStroke() }
+        .onChange(of: scenePhase) {
+            if scenePhase != .active { routeDrawing.cancelStroke(); invalidateExplanation() }
+        }
         .onDisappear { invalidateExplanation() }
         .sensoryFeedback(.selection, trigger: position)
+        .sensoryFeedback(.selection, trigger: routeDrawing.routes.count)
     }
 
     private func field(horizontal: Bool) -> some View {
         PitchView(
-            ball: $ball, routes: $routes, draft: $draft, role: position,
+            ball: $ball, routeDrawing: $routeDrawing, role: position,
             comparison: comparing ? comparison : nil,
             showHeat: showHeat, showGuides: showGuides,
-            drawing: drawing, horizontal: horizontal
+            drawing: drawing, routeStyle: routeStyle, snapRoutes: snapRoutes, horizontal: horizontal
         )
     }
 
-    private func tabletopPitch(size: CGSize) -> some View {
-        VStack(spacing: 10) {
-            HStack {
-                Label("Touchline stand", systemImage: "laptopcomputer")
-                    .font(.caption.weight(.semibold))
-                Spacer()
-                Label("Defend left", systemImage: "arrow.left")
-                    .font(.caption2).foregroundStyle(CoachPalette.muted)
+    private func fixedPitchPane(size: CGSize) -> some View {
+        let horizontal = size.width > size.height
+        return field(horizontal: horizontal)
+            .overlay(alignment: .top) {
+                HStack(spacing: 12) {
+                    legend(position.rawValue, color: CoachPalette.lime)
+                    if comparing { legend(comparison.rawValue, color: CoachPalette.blue) }
+                    Spacer(minLength: 0)
+                    Label(horizontal ? "Defend left" : "Defend bottom", systemImage: horizontal ? "arrow.left" : "arrow.down")
+                        .font(.caption2).foregroundStyle(CoachPalette.muted)
+                }
+                .lineLimit(1).minimumScaleFactor(0.7)
+                .padding(.horizontal, 18).padding(.top, 8)
+                .allowsHitTesting(false)
             }
-            field(horizontal: true)
-                .aspectRatio(1.5, contentMode: .fit)
-                .frame(maxWidth: max(1, min(size.width - 32, (size.height - 100) * 1.5)))
-            HStack(spacing: 14) {
-                legend(position.rawValue, color: CoachPalette.lime)
-                if comparing { legend(comparison.rawValue, color: CoachPalette.blue) }
-                Spacer(minLength: 0)
-                Text(drawing ? "Draw your route" : "Drag to move the ball")
+            .overlay(alignment: .bottom) {
+                Text(drawing ? "DRAW ROUTE  ·  \(routeStyle.rawValue.uppercased())" : "DRAG TO MOVE THE BALL")
                     .font(.caption2).foregroundStyle(CoachPalette.muted)
+                    .lineLimit(1).minimumScaleFactor(0.7)
+                    .padding(.horizontal, 16).padding(.bottom, 8)
+                    .allowsHitTesting(false)
             }
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(8)
     }
 
     private func pitchPane(layout: CoachingLayout, duo: Bool) -> some View {
@@ -141,7 +152,6 @@ struct CoachView: View {
                     field(horizontal: horizontal)
                     .aspectRatio(horizontal ? 1.5 : 0.76, contentMode: .fit)
                     .frame(maxWidth: horizontal ? 780 : 530)
-                    pitchToolbar
                     HStack(spacing: 16) {
                         legend(position.rawValue, color: CoachPalette.lime)
                         if comparing { legend(comparison.rawValue, color: CoachPalette.blue) }
@@ -193,30 +203,68 @@ struct CoachView: View {
     }
 
     private var drawingTools: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) { drawModeButton; routeHistoryButtons }
+            VStack(alignment: .leading, spacing: 8) { drawModeButton; routeHistoryButtons }
+        }
+    }
+
+    private var drawModeButton: some View {
+        Button {
+            drawing.toggle()
+        } label: {
+            Label(drawing ? "Done drawing" : "Draw route", systemImage: drawing ? "checkmark" : "pencil.tip.crop.circle")
+                .font(.caption.weight(.semibold))
+                .padding(.horizontal, 12)
+                .frame(minHeight: 44)
+                .foregroundStyle(drawing ? CoachPalette.ink : .white)
+                .background(drawing ? CoachPalette.lime : .white.opacity(0.07), in: Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var routeHistoryButtons: some View {
         HStack(spacing: 8) {
-            Button {
-                drawing.toggle()
-            } label: {
-                Label(drawing ? "Done drawing" : "Draw route", systemImage: drawing ? "checkmark" : "pencil.tip.crop.circle")
-                    .font(.caption.weight(.semibold))
-                    .padding(.horizontal, 12)
-                    .frame(minHeight: 44)
-                    .foregroundStyle(drawing ? CoachPalette.ink : .white)
-                    .background(drawing ? CoachPalette.lime : .white.opacity(0.07), in: Capsule())
+            Button { routeDrawing.undo() } label: {
+                Image(systemName: "arrow.uturn.backward")
+                    .frame(width: 44, height: 44)
+                    .background(.white.opacity(0.07), in: Circle())
             }
-            .buttonStyle(.plain)
-            if !routes.isEmpty {
-                Button {
-                    _ = routes.popLast()
-                } label: {
-                    Image(systemName: "arrow.uturn.backward")
-                        .frame(width: 44, height: 44)
-                        .background(.white.opacity(0.07), in: Circle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Undo last route")
+            .accessibilityLabel("Undo last route")
+            .disabled(!routeDrawing.canUndo)
+            .opacity(routeDrawing.canUndo ? 1 : 0.35)
+            Button { routeDrawing.redo() } label: {
+                Image(systemName: "arrow.uturn.forward")
+                    .frame(width: 44, height: 44)
+                    .background(.white.opacity(0.07), in: Circle())
+            }
+            .accessibilityLabel("Redo route")
+            .disabled(!routeDrawing.canRedo)
+            .opacity(routeDrawing.canRedo ? 1 : 0.35)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var routePanel: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            sectionEyebrow("PITCH & ROUTE TOOLS")
+            pitchToolbar
+            Picker("Route style", selection: $routeStyle) {
+                ForEach(RouteStyle.allCases) { Text($0.rawValue).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            Toggle("Snap endpoints", isOn: $snapRoutes)
+                .font(.subheadline)
+            Text("Curve smooths your stroke. Straight draws a pass. Nearby endpoints snap to the ball or a player.")
+                .font(.caption).foregroundStyle(CoachPalette.muted)
+                .fixedSize(horizontal: false, vertical: true)
+            if routeDrawing.canUndo || routeDrawing.canRedo {
+                Button("Clear routes and history", role: .destructive) { routeDrawing.clear() }
+                    .font(.caption.weight(.medium))
+                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
             }
         }
+        .coachCard()
     }
 
     private var resetBall: some View {
@@ -235,6 +283,7 @@ struct CoachView: View {
 
     private var coachingControls: some View {
         VStack(alignment: .leading, spacing: 18) {
+            routePanel
             VStack(alignment: .leading, spacing: 14) {
                 HStack {
                     sectionEyebrow("01  CHOOSE YOUR ROLE")
@@ -392,10 +441,6 @@ struct CoachView: View {
                 VStack(spacing: 14) {
                     Toggle("Position glow", isOn: $showHeat)
                     Toggle("Goal-side guide", isOn: $showGuides)
-                    if !routes.isEmpty {
-                        Button("Clear drawn routes", role: .destructive) { routes = []; draft = [] }
-                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                    }
                 }
                 .font(.subheadline)
                 .padding(.top, 14)

@@ -12,7 +12,7 @@ let package = Package(
                 "CoachAIApp.swift", "CoachView.swift", "PitchView.swift",
                 "Info.plist", "CoachAI.entitlements", "PrivacyInfo.xcprivacy",
             ],
-            sources: ["Positioning.swift", "CoachingLayout.swift"]
+            sources: ["Positioning.swift", "CoachingLayout.swift", "RouteDrawing.swift"]
         ),
         .testTarget(name: "CoachCoreTests", dependencies: ["CoachCore"], path: "Tests"),
     ]

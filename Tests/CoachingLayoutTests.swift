@@ -23,6 +23,34 @@ final class CoachingLayoutTests: XCTestCase {
         XCTAssertNil(layout.coachPane)
     }
 
+    func testDuoCoachingDeskDoesNotRequireTabletWidth() throws {
+        let size = CGSize(width: 650, height: 500)
+        let layout = CoachingLayout.resolve(size: size, division: nil, duoDisplay: true)
+        XCTAssertEqual(layout.mode, .desk)
+        XCTAssertEqual(layout.pitchPane.minX, 0)
+        XCTAssertEqual(layout.pitchPane.height, size.height)
+        XCTAssertEqual(try XCTUnwrap(layout.coachPane).minX, layout.pitchPane.maxX)
+        XCTAssertEqual(try XCTUnwrap(layout.coachPane).maxX, size.width)
+        XCTAssertGreaterThanOrEqual(try XCTUnwrap(layout.coachPane).width, 240)
+    }
+
+    func testDuoLargeTextKeepsPitchFixedAndSettingsInItsOwnPane() throws {
+        let layout = CoachingLayout.resolve(
+            size: CGSize(width: 650, height: 500), division: nil, largeText: true, duoDisplay: true
+        )
+        XCTAssertEqual(layout.mode, .desk)
+        XCTAssertEqual(try XCTUnwrap(layout.coachPane).minX, layout.pitchPane.maxX)
+        XCTAssertEqual(layout.pitchPane.height, 500)
+    }
+
+    func testCompactOuterDisplayDoesNotForceTwoCrampedPanes() {
+        let layout = CoachingLayout.resolve(
+            size: CGSize(width: 390, height: 780), division: nil, duoDisplay: true
+        )
+        XCTAssertEqual(layout.mode, .compact)
+        XCTAssertNil(layout.coachPane)
+    }
+
     func testBookFoldUsesActualOffCenterDivisionNotScreenMidpoint() throws {
         let fold = CGRect(x: 350, y: 0, width: 44, height: 760)
         let layout = CoachingLayout.resolve(size: CGSize(width: 900, height: 760), division: fold)
