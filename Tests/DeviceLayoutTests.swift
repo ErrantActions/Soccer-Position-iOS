@@ -95,7 +95,8 @@ final class DeviceLayoutTests: XCTestCase {
                 XCTAssertGreaterThan(metrics.pitchSize.height, 0)
                 XCTAssertLessThanOrEqual(metrics.pitchSize.width, max(0, size.width - metrics.padding * 2) + 0.000001)
                 XCTAssertLessThanOrEqual(metrics.pitchSize.height, size.height * (largeText ? 0.42 : 0.60) + 0.000001)
-                XCTAssertEqual(metrics.pitchSize.width / metrics.pitchSize.height, metrics.horizontal ? 1.5 : 0.76, accuracy: 0.000001)
+                let projection = PitchProjection(size: metrics.pitchSize, horizontal: metrics.horizontal)
+                XCTAssertEqual(projection.bounds.width / projection.bounds.height, PitchDimensions.aspectRatio(horizontal: metrics.horizontal), accuracy: 0.000001)
             }
         }
     }

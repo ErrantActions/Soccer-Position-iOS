@@ -543,3 +543,26 @@ The separate simulator UI diagnostics remain incomplete as documented above.
 Do not count the portable tests or successful archive as a passing native-bar
 interaction test. Update through TestFlight and verify the actual native edge
 bar on the physical Duo.
+
+## True pitch geometry and stable title-free viewport
+
+The playing area now uses a common **105 x 68 m** professional reference, not a
+claim that every legal field has that size. The actual touchline bounds are
+aspect-fitted and centered, with one shared metre-to-point scale for both axes.
+Compact and fixed Duo/iPad panes use the same fitting/projection logic.
+Unused space is letterboxed; the field is no longer stretched merely to fill a
+pane. The dark canvas margin is separate from the green playing area.
+
+Existing markings use physical dimensions: 9.15 m center-circle radius, 16.5 m
+penalty-area depth, 5.5 m goal-area depth, 11 m penalty-spot distance and 7.32 m
+goal width. Player, AI, ball and route coordinates retain their normalized values
+and use that same projection. Input begins on the actual playing area, with a
+small boundary tolerance for grabbing markers on a touchline, not in padding.
+Moving/resizing the fitted canvas cancels only an unfinished gesture.
+
+The navigation title bar is explicitly hidden; `NavigationStack` and the visible
+bottom/native action toolbar remain in place. This removes the collapsing title
+that changed the available field height when scrolling the settings, without
+returning to an unpopulated native Duo bar. Physical title/bar behavior still
+needs the owner's phone check; hosted simulator UI diagnostics remain incomplete
+as recorded above.

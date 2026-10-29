@@ -22,10 +22,15 @@ Apple's store name "CoachAI" was unavailable; the on-device display name remains
   the canvas geometry cancels only the unfinished stroke.
 - On iOS 27.1+, Apple's actual division reserved regions drive Duo book-fold and
   tabletop layouts. The pitch and coaching controls stay on opposite sides of the
-  active fold. On expanded Duo and wide layouts, the pitch fills its own pane
-  without scrolling or an aspect-ratio size cap; all controls live in the
+  active fold. On expanded Duo and wide layouts, the pitch fits its own pane
+  without scrolling or stretching; all controls live in the
   independently scrolling right panel. A horizontal tabletop fold uses a full
   top pitch pane and bottom controls so nothing crosses the hinge.
+- The actual playing area uses a common **105 x 68 m** reference with one uniform
+  metre-to-screen scale. It letterboxes when needed rather than distorting the
+  field, circles or player/route geometry. Box, spot and goal markings use metres.
+  The navigation title bar is hidden so settings scrolling cannot collapse it
+  and resize the field; the native action toolbar remains registered and visible.
 - Duo uses its dedicated route-tools / AI / role control ordering and spacing,
   independent of regular-device refinements. Active folds select that presentation
   directly; the fully open inner display uses inactive division information.

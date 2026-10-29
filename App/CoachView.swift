@@ -97,13 +97,12 @@ struct CoachView: View {
     var body: some View {
         NavigationStack {
             coachingBoard
-                .navigationTitle("CoachAI")
-                .navigationBarTitleDisplayMode(.inline)
+                .toolbar(.hidden, for: .navigationBar)
                 .toolbar { nativeControls }
                 .toolbar(.visible, for: .bottomBar)
-                .toolbarBackground(CoachPalette.ink, for: .navigationBar, .bottomBar)
+                .toolbarBackground(CoachPalette.ink, for: .bottomBar)
                 .toolbarBackground(.visible, for: .bottomBar)
-                .toolbarColorScheme(.dark, for: .navigationBar, .bottomBar)
+                .toolbarColorScheme(.dark, for: .bottomBar)
         }
         .preferredColorScheme(.dark)
         .tint(CoachPalette.lime)
@@ -213,7 +212,12 @@ struct CoachView: View {
 
     private func fixedPitchPane(size: CGSize) -> some View {
         let horizontal = size.width > size.height
+        let viewport = PitchDimensions.fittedViewport(
+            in: CGSize(width: max(0, size.width - 16), height: max(0, size.height - 16)),
+            horizontal: horizontal
+        )
         return field(horizontal: horizontal)
+            .frame(width: viewport.width, height: viewport.height)
             .overlay(alignment: .top) {
                 HStack(spacing: 12) {
                     legend(position.rawValue, color: acceptedPlan == nil ? CoachPalette.lime : CoachPalette.ai)
@@ -234,6 +238,7 @@ struct CoachView: View {
                     .padding(.horizontal, 16).padding(.bottom, 8)
                     .allowsHitTesting(false)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding(8)
     }
 

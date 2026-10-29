@@ -75,27 +75,75 @@ struct CompactPitchMetrics: Equatable {
         let padding: CGFloat = size.width < 360 ? 14 : 20
         let width = max(0, min(600, size.width - padding * 2))
         let horizontal = size.width > size.height
-        let ratio: CGFloat = horizontal ? 1.5 : 0.76
         let heightBudget = max(0, min(largeText ? 360 : 560, size.height * (largeText ? 0.42 : 0.60)))
-        let pitchWidth = min(width, heightBudget * ratio)
         return CompactPitchMetrics(
             padding: padding, spacing: size.height < 700 ? 14 : 20,
-            pitchSize: CGSize(width: pitchWidth, height: pitchWidth / ratio),
+            pitchSize: PitchDimensions.fittedViewport(in: CGSize(width: width, height: heightBudget), horizontal: horizontal),
             horizontal: horizontal,
             showIntroduction: size.width >= 600 && size.height >= 900 && !largeText
         )
     }
 }
 
+enum PitchDimensions {
+    // A common professional reference; the laws permit other field dimensions.
+    static let length: CGFloat = 105
+    static let width: CGFloat = 68
+    static let centerCircleRadius: CGFloat = 9.15
+    static let goalWidth: CGFloat = 7.32
+    static let goalAreaDepth: CGFloat = 5.5
+    static let goalAreaWidth: CGFloat = goalWidth + goalAreaDepth * 2
+    static let penaltyAreaDepth: CGFloat = 16.5
+    static let penaltyAreaWidth: CGFloat = goalWidth + penaltyAreaDepth * 2
+    static let penaltySpotDistance: CGFloat = 11
+    static let canvasInset: CGFloat = 26
+
+    static func aspectRatio(horizontal: Bool) -> CGFloat {
+        horizontal ? length / width : width / length
+    }
+
+    static func fittedPlayingSize(in available: CGSize, horizontal: Bool) -> CGSize {
+        let availableWidth = max(0, available.width)
+        let availableHeight = max(0, available.height)
+        guard availableWidth > 0, availableHeight > 0 else { return .zero }
+        let ratio = aspectRatio(horizontal: horizontal)
+        let fittedWidth = min(availableWidth, availableHeight * ratio)
+        return CGSize(width: fittedWidth, height: fittedWidth / ratio)
+    }
+
+    static func inset(for size: CGSize) -> CGFloat {
+        min(canvasInset, max(0, min(size.width, size.height)) / 2)
+    }
+
+    static func fittedViewport(in available: CGSize, horizontal: Bool) -> CGSize {
+        let available = CGSize(width: max(0, available.width), height: max(0, available.height))
+        let inset = inset(for: available)
+        let field = fittedPlayingSize(
+            in: CGSize(width: available.width - inset * 2, height: available.height - inset * 2),
+            horizontal: horizontal
+        )
+        guard field.width > 0, field.height > 0 else { return available }
+        return CGSize(width: field.width + inset * 2, height: field.height + inset * 2)
+    }
+}
+
 struct PitchProjection {
     let bounds: CGRect
     let horizontal: Bool
+    var isUsable: Bool { bounds.width > 0 && bounds.height > 0 }
+    var interactionBounds: CGRect { isUsable ? bounds.insetBy(dx: -2, dy: -2) : bounds }
+    var metersToPoints: CGFloat { horizontal ? bounds.width / PitchDimensions.length : bounds.width / PitchDimensions.width }
 
     init(size: CGSize, horizontal: Bool) {
-        let inset = min(26, min(size.width, size.height) / 4)
+        let size = CGSize(width: max(0, size.width), height: max(0, size.height))
+        let inset = PitchDimensions.inset(for: size)
+        let field = PitchDimensions.fittedPlayingSize(
+            in: CGSize(width: size.width - inset * 2, height: size.height - inset * 2),
+            horizontal: horizontal
+        )
         self.bounds = CGRect(
-            x: inset, y: inset,
-            width: max(1, size.width - inset * 2), height: max(1, size.height - inset * 2)
+            x: (size.width - field.width) / 2, y: (size.height - field.height) / 2,
+            width: field.width, height: field.height
         )
         self.horizontal = horizontal
     }
@@ -109,6 +157,7 @@ struct PitchProjection {
     }
 
     func fieldPoint(_ location: CGPoint) -> FieldPoint {
+        guard isUsable else { return FieldPoint(depth: 0.5, width: 0.5) }
         if horizontal {
             return FieldPoint(
                 depth: (location.x - bounds.minX) / bounds.width,
@@ -119,6 +168,16 @@ struct PitchProjection {
             depth: (bounds.maxY - location.y) / bounds.height,
             width: (location.x - bounds.minX) / bounds.width
         ).bounded
+    }
+
+    func meterLocation(depth: CGFloat, width: CGFloat) -> CGPoint {
+        location(FieldPoint(depth: Double(depth / PitchDimensions.length), width: Double(width / PitchDimensions.width)))
+    }
+
+    func meterRectangle(depth: ClosedRange<CGFloat>, width: ClosedRange<CGFloat>) -> CGRect {
+        let first = meterLocation(depth: depth.lowerBound, width: width.lowerBound)
+        let last = meterLocation(depth: depth.upperBound, width: width.upperBound)
+        return CGRect(x: min(first.x, last.x), y: min(first.y, last.y), width: abs(last.x - first.x), height: abs(last.y - first.y))
     }
 }
 

@@ -25,7 +25,7 @@ struct PitchView: View {
     @State private var gestureContext: GestureContext?
 
     private struct GestureContext: Equatable {
-        let size: CGSize
+        let frame: CGRect
         let horizontal: Bool
         let drawing: Bool
         let style: RouteStyle
@@ -42,17 +42,15 @@ struct PitchView: View {
     var body: some View {
         GeometryReader { geometry in
             let projection = PitchProjection(size: geometry.size, horizontal: horizontal)
+            let frame = geometry.frame(in: .global)
             let context = GestureContext(
-                size: geometry.size, horizontal: horizontal, drawing: drawing,
+                frame: frame, horizontal: horizontal, drawing: drawing,
                 style: routeStyle, snap: snapRoutes, anchors: drawing ? anchors : [],
                 routeCount: routeDrawing.routes.count, editTarget: editTarget
             )
             ZStack {
                 RoundedRectangle(cornerRadius: 22)
-                    .fill(LinearGradient(
-                        colors: [Color(red: 0.09, green: 0.28, blue: 0.22), Color(red: 0.04, green: 0.17, blue: 0.14)],
-                        startPoint: .topLeading, endPoint: .bottomTrailing
-                    ))
+                    .fill(CoachPalette.surface)
                 Canvas { context, size in
                     drawField(context: &context, projection: projection)
                     if showGuides {
@@ -119,11 +117,13 @@ struct PitchView: View {
             }
             .overlay(RoundedRectangle(cornerRadius: 22).strokeBorder(.white.opacity(0.09), lineWidth: 1))
             .clipShape(RoundedRectangle(cornerRadius: 22))
-            .contentShape(Rectangle())
+            .contentShape(PitchHitArea(bounds: projection.interactionBounds))
+            .allowsHitTesting(projection.isUsable)
             .gesture(DragGesture(minimumDistance: drawing ? 3 : 0)
                 .updating($isDragging) { _, active, _ in active = true }
                 .onChanged { value in
                     if gestureContext == nil {
+                        guard projection.isUsable, projection.interactionBounds.contains(value.startLocation) else { return }
                         gestureContext = context
                         if !drawing { onEditingChanged(true) }
                     }
@@ -156,7 +156,7 @@ struct PitchView: View {
             .onChange(of: isDragging) {
                 if !isDragging { routeDrawing.cancelStroke(); gestureContext = nil; onEditingChanged(false) }
             }
-            .onChange(of: geometry.size) { routeDrawing.cancelStroke() }
+            .onChange(of: frame) { routeDrawing.cancelStroke() }
             .onChange(of: horizontal) { routeDrawing.cancelStroke() }
             .onDisappear { routeDrawing.cancelStroke(); onEditingChanged(false) }
             .accessibilityElement(children: .ignore)
@@ -180,7 +180,12 @@ struct PitchView: View {
     }
 
     private func drawField(context: inout GraphicsContext, projection: PitchProjection) {
+        guard projection.isUsable else { return }
         let field = projection.bounds
+        context.fill(Path(field), with: .linearGradient(
+            Gradient(colors: [Color(red: 0.09, green: 0.28, blue: 0.22), Color(red: 0.04, green: 0.17, blue: 0.14)]),
+            startPoint: CGPoint(x: field.minX, y: field.minY), endPoint: CGPoint(x: field.maxX, y: field.maxY)
+        ))
         for index in 0..<10 where index.isMultiple(of: 2) {
             let stripe = projection.horizontal
                 ? CGRect(x: field.minX + CGFloat(index) * field.width / 10, y: field.minY, width: field.width / 10, height: field.height)
@@ -188,27 +193,45 @@ struct PitchView: View {
             context.fill(Path(stripe), with: .color(.white.opacity(0.025)))
         }
         var lines = Path()
-        lines.addRoundedRect(in: field, cornerSize: CGSize(width: 2, height: 2))
+        lines.addRect(field)
         lines.move(to: projection.location(FieldPoint(depth: 0.5, width: 0)))
         lines.addLine(to: projection.location(FieldPoint(depth: 0.5, width: 1)))
         let center = projection.location(FieldPoint(depth: 0.5, width: 0.5))
-        let radius = min(field.width, field.height) * 0.14
+        let radius = PitchDimensions.centerCircleRadius * projection.metersToPoints
         lines.addEllipse(in: CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2))
-        for depth in [0.0, 1.0] {
-            for (boxDepth, boxWidth) in [(0.16, 0.64), (0.055, 0.3)] {
-                let start = projection.location(FieldPoint(depth: depth, width: (1 - boxWidth) / 2))
-                let end = projection.location(FieldPoint(depth: depth == 0 ? boxDepth : 1 - boxDepth, width: (1 + boxWidth) / 2))
-                lines.addRect(CGRect(x: min(start.x, end.x), y: min(start.y, end.y), width: abs(end.x - start.x), height: abs(end.y - start.y)))
+        for ownGoal in [true, false] {
+            for (boxDepth, boxWidth) in [
+                (PitchDimensions.penaltyAreaDepth, PitchDimensions.penaltyAreaWidth),
+                (PitchDimensions.goalAreaDepth, PitchDimensions.goalAreaWidth),
+            ] {
+                let depth: ClosedRange<CGFloat> = ownGoal ? (0...boxDepth) :
+                    ((PitchDimensions.length - boxDepth)...PitchDimensions.length)
+                let width = ((PitchDimensions.width - boxWidth) / 2)...((PitchDimensions.width + boxWidth) / 2)
+                lines.addRect(projection.meterRectangle(depth: depth, width: width))
             }
-            let spot = projection.location(FieldPoint(depth: depth == 0 ? 0.115 : 0.885, width: 0.5))
+            let spot = projection.meterLocation(
+                depth: ownGoal ? PitchDimensions.penaltySpotDistance : PitchDimensions.length - PitchDimensions.penaltySpotDistance,
+                width: PitchDimensions.width / 2
+            )
             context.fill(Path(ellipseIn: CGRect(x: spot.x - 2, y: spot.y - 2, width: 4, height: 4)), with: .color(.white.opacity(0.5)))
         }
         context.stroke(lines, with: .color(.white.opacity(contrast == .increased ? 0.65 : 0.37)), lineWidth: 1.2)
         context.fill(Path(ellipseIn: CGRect(x: center.x - 2, y: center.y - 2, width: 4, height: 4)), with: .color(.white.opacity(0.65)))
-        var goal = Path()
-        goal.move(to: projection.location(FieldPoint(depth: 0, width: 0.4)))
-        goal.addLine(to: projection.location(FieldPoint(depth: 0, width: 0.6)))
-        context.stroke(goal, with: .color(CoachPalette.lime), style: StrokeStyle(lineWidth: 4, lineCap: .round))
+        for ownGoal in [true, false] {
+            let depth: CGFloat = ownGoal ? 0 : PitchDimensions.length
+            var goal = Path()
+            goal.move(to: projection.meterLocation(depth: depth, width: (PitchDimensions.width - PitchDimensions.goalWidth) / 2))
+            goal.addLine(to: projection.meterLocation(depth: depth, width: (PitchDimensions.width + PitchDimensions.goalWidth) / 2))
+            context.stroke(goal, with: .color(ownGoal ? CoachPalette.lime : .white.opacity(0.7)), lineWidth: 4)
+        }
+    }
+
+    private struct PitchHitArea: Shape {
+        let bounds: CGRect
+
+        func path(in rect: CGRect) -> Path {
+            Path(bounds.offsetBy(dx: rect.minX, dy: rect.minY))
+        }
     }
 
     private func drawRoute(_ points: [FieldPoint], context: inout GraphicsContext, projection: PitchProjection) {
